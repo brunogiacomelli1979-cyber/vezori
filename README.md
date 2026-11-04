@@ -2,7 +2,7 @@
 
 Plataforma independente de inteligência de investimentos com **consultas reais a APIs financeiras**, motor de carteira multimoeda, desempenho ponderado por fluxos e estudo de estratégias. Código preparado para novo repositório GitHub dedicado (`vezori`) e publicação com **Cloudflare Workers**, sem Railway e sem obrigatoriedade de servidores pagos.
 
-> **Status:** v1.0 publicada no repositório GitHub `brunogiacomelli1979-cyber/vezori` em 04/11/2026, com 21 testes locais aprovados. **Ainda não foi implantada no Cloudflare nem conectada a credenciais pessoais.** Integrações externas foram verificadas contra documentação e endpoints públicos; testes automatizados usam respostas controladas para garantir cálculos e contratos. Teste ao vivo no endereço final ainda depende de implantação e configuração das chaves.
+> **Status de produção (04/11/2026):** deploy confirmado em https://vezori.bruno-giacomelli1979.workers.dev via GitHub Actions. **24 testes automatizados aprovados.** A verificação online confirmou 4 cotações brasileiras, 2 referências de câmbio e 1 indicador macro. A API CoinGecko pública sem chave respondeu HTTP 403 no Cloudflare: para habilitar BTC, ETH e SOL, cadastre uma chave gratuita Demo como secret `COINGECKO_API_KEY` no Worker. Ações/ETFs internacionais requerem `TWELVEDATA_API_KEY`. Não publicar credenciais no repositório.
 
 ## Recursos já implementados
 
@@ -23,6 +23,14 @@ Plataforma independente de inteligência de investimentos com **consultas reais 
 | Projeção de aportes | Sim, matemática hipotética | Taxa escolhida pelo usuário, não previsão nem histórico |
 | Exportação/importação | Sim | JSON validado, somente no navegador |
 | Login, sincronização da carteira, imposto, trading | Não | Próximas versões com backend autenticado |
+
+## Saúde das APIs e limites observados
+
+Em 04/11/2026, a brapi respondeu HTTP 429 com quatro requisições simultâneas; a implementação foi alterada para consultar os quatro tickers gratuitos em lote, reduzindo as chamadas. A API pública CoinGecko sem credencial respondeu HTTP 403 na infraestrutura Cloudflare. Os valores ausentes são explicitamente marcados como indisponíveis — não são preenchidos com preços fictícios.
+
+- Chaves financeiras são configuradas em **Cloudflare Workers > vezori > Settings > Variables and Secrets**, como tipo **Secret**.
+- Configurar `COINGECKO_API_KEY` para criptomoedas e `TWELVEDATA_API_KEY` para ativos globais. A `BRAPI_API_KEY` é opcional para outros tickers, conforme plano.
+- Não confundir os dois segredos `CLOUDFLARE_API_TOKEN` e `CLOUDFLARE_ACCOUNT_ID`, usados no GitHub apenas para deploy, com chaves dos provedores financeiros, usadas no Worker em tempo de execução.
 
 ## Arquitetura
 
