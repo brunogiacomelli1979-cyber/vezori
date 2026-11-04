@@ -36,6 +36,45 @@ function marketView(){
  for(const error of d.errors||[])warnings.push(`${error.source}: ${error.message}`);
  $('market-warnings').innerHTML=warnings.map(t=>`<div class="warning">${esc(t)}</div>`).join('');
 }
+function overviewStrategyPreview(){
+ const container=$('overview-strategies');
+ if(!container)return;
+ const symbols=['◎','↗','◈'];
+ container.innerHTML=STRATEGIES.slice(0,3).map((strategy,i)=>
+  `<button class="strategy-preview-item" type="button" data-strategy="${i}"><span class="strategy-symbol" aria-hidden="true">${symbols[i]}</span><span class="strategy-preview-text"><strong>${esc(strategy.title)}</strong><small>${esc(strategy.by)}</small></span><span class="strategy-arrow" aria-hidden="true">↗</span></button>`
+ ).join('');
+}
+function overviewPortfolioPreview(summary){
+ const target=$('overview-portfolio');if(!target)return;
+ if(!summary.total){
+  target.innerHTML='<div class="portfolio-empty"><span class="portfolio-empty-icon" aria-hidden="true">▢</span><strong>Comece a acompanhar sua carteira</strong><p>Cadastre sua primeira operação para visualizar patrimônio e composição.</p><button class="text-link" type="button" data-overview-portfolio>Registrar operação ↗</button></div>';
+  return;
+ }
+ if(!summary.complete||summary.marketBRL<=0){
+  target.innerHTML=`<div class="portfolio-empty"><span class="portfolio-empty-icon" aria-hidden="true">!</span><strong>Patrimônio ainda não consolidado</strong><p>${summary.coverage} de ${summary.total} posições possuem cotação válida. O total não é exibido até completar a cobertura.</p><button class="text-link" type="button" data-overview-portfolio>Ver posições ↗</button></div>`;
+  return;
+ }
+ const colors={BR:'#46d3b6',US:'#5a9dca',CRYPTO:'#e8bb72'};
+ const names={BR:'Brasil',US:'Exterior',CRYPTO:'Cripto'};
+ const amounts={BR:0,US:0,CRYPTO:0};
+ for(const row of summary.rows){const m=ASSETS[row.symbol].market;if(Object.hasOwn(amounts,m))amounts[m]+=row.marketBRL;}
+ let cursor=0;
+ const parts=Object.entries(amounts).filter(([,amount])=>amount>0).map(([market,amount])=>{
+  const start=cursor;cursor+=amount/summary.marketBRL*100;
+  return {market,amount,start,end:cursor};
+ });
+ const stops=parts.map(p=>`${colors[p.market]} ${p.start.toFixed(4)}% ${p.end.toFixed(4)}%`).join(', ');
+ const legend=parts.map(p=>`<div class="portfolio-legend-row"><span style="background:${colors[p.market]}"></span>${names[p.market]}<strong>${number(p.amount/summary.marketBRL*100,1)}%</strong></div>`).join('');
+ target.innerHTML=`<div class="portfolio-preview-full"><div class="portfolio-donut" style="background:conic-gradient(${stops})" role="img" aria-label="Composição da carteira por mercado"><div class="portfolio-donut-inner"><strong>${money(summary.marketBRL)}</strong><span>Patrimônio</span></div></div><div class="portfolio-legend">${legend}</div></div>`;
+}
+function overviewProjectionPreview(points){
+ const chart=$('overview-sim-chart'),metrics=$('overview-sim-metrics');
+ if(!chart||!metrics||!points?.length)return;
+ const last=points.at(-1),max=Math.max(...points.map(p=>p.amount),1);
+ const sampled=points.length>12?points.filter((p,i)=>i===0||i===points.length-1||i%Math.ceil(points.length/11)===0):points;
+ chart.innerHTML=sampled.map((p,i)=>`<div class="preview-bar-wrap" title="Ano ${p.year} · ${money(p.amount)}"><div class="preview-bar" style="height:${Math.max(3,p.amount/max*137).toFixed(1)}px"></div><span class="preview-bar-label">${sampled.length<=12||i===0||i===sampled.length-1?p.year+'a':''}</span></div>`).join('');
+ metrics.innerHTML=`<div class="sim-metric">Montante hipotético<strong>${money(last.amount)}</strong></div><div class="sim-metric">Capital aportado<strong>${money(last.contributions)}</strong></div><div class="sim-metric">Juros matemáticos<strong>${money(last.amount-last.contributions)}</strong></div>`;
+}
 function dashboardView(){
  const d=state.data;if(!d)return;
  const usd=d.fx.find(f=>f.pair==='USD/BRL'),eur=d.fx.find(f=>f.pair==='EUR/BRL');
@@ -50,6 +89,7 @@ function dashboardView(){
  $('hero-count').textContent=String(d.quotes.length).padStart(2,'0');
  $('hero-time').textContent=`Consulta: ${formatTime(d.generatedAt)}`;
  $('last-sync').textContent=`Última consulta ${formatTime(d.generatedAt)}`;
+ if($('sidebar-source-status'))$('sidebar-source-status').textContent=`${d.quotes.length} ativos com preço disponível`;
 }
 function providerView(){
  const catalog=[
@@ -78,6 +118,7 @@ function portfolioView(){
  $('portfolio-coverage').textContent=p.total?`${p.coverage} de ${p.total} posições com preço real`:'Nenhuma posição cadastrada';
  $('portfolio-msg').textContent=p.complete?'Custo histórico de operações convertido pela taxa informada em cada transação. Preços de mercado vêm das fontes acima.':'Cobertura incompleta: não apresentamos o valor total ou a rentabilidade como se todas as posições estivessem precificadas.';
  $('portfolio-table').innerHTML=p.rows.length?p.rows.map(r=>`<tr><td><strong class="asset-main">${esc(r.symbol)}</strong><span class="asset-sub">${esc(ASSETS[r.symbol].name)}</span></td><td>${number(r.qty,8)}</td><td>${money(r.costBRL)}</td><td>${r.quoteAvailable?money(r.marketBRL):'<span class="muted">Sem cotação</span>'}</td></tr>`).join(''):'<tr><td colspan="4">Carteira vazia. Registre uma compra para começar.</td></tr>';
+ overviewPortfolioPreview(p);
  $('transactions-table').innerHTML=state.transactions.length?[...state.transactions].reverse().map(t=>{
   const side=t.side==='buy'?'Compra':t.side==='sell'?'Venda':'Provento';
   return `<tr><td>${esc(t.date)}</td><td>${side}</td><td>${esc(t.symbol)}</td><td>${t.side==='income'?'—':number(t.qty,8)}</td><td>${money(t.unitPrice,ASSETS[t.symbol].currency)}</td><td><button class="delete-button" data-delete="${esc(t.id)}" aria-label="Excluir operação">Excluir</button></td></tr>`;
@@ -92,6 +133,7 @@ function simulationView(){
   const initial=Number($('sim-initial').value),monthly=Number($('sim-monthly').value),rate=Number($('sim-rate').value)/100,years=Number($('sim-years').value);
   const result=project(initial,monthly,rate,years),last=result.at(-1),max=Math.max(...result.map(v=>v.amount),1);
   $('sim-result').innerHTML=`<div>Montante hipotético<strong>${money(last.amount)}</strong></div><div>Capital aportado<strong>${money(last.contributions)}</strong></div><div>Juros matemáticos<strong>${money(last.amount-last.contributions)}</strong></div>`;
+  overviewProjectionPreview(result);
   $('sim-chart').innerHTML=result.map((x,i)=>`<div class="sim-bar" style="height:${Math.max(2,x.amount/max*145)}px" title="Ano ${x.year}: ${money(x.amount)}">${i===0||i===result.length-1||i%5===4?`<span class="chart-year">${x.year}a</span>`:''}</div>`).join('');
  }catch(e){$('sim-result').textContent=e.message;$('sim-chart').innerHTML='';}
 }
@@ -100,7 +142,10 @@ function navigate(view){
  state.active=view;
  document.querySelectorAll('.view').forEach(el=>el.classList.toggle('active',el.id==='view-'+view));
  document.querySelectorAll('.nav').forEach(el=>el.classList.toggle('active',el.dataset.view===view));
- $('breadcrumb').textContent={overview:'VISÃO GERAL',market:'MERCADO',portfolio:'MINHA CARTEIRA',strategies:'LABORATÓRIO',about:'INTEGRAÇÕES'}[view];
+ $('breadcrumb').textContent={overview:'VISÃO GERAL',market:'MERCADO REAL',portfolio:'MINHA CARTEIRA',strategies:'LABORATÓRIO',about:'INTEGRAÇÕES'}[view];
+ const titles={overview:['Visão geral','Inteligência de mercado, carteira e estratégias em um só lugar.'],market:['Mercado real','Cotações, comparações e séries históricas verificáveis.'],portfolio:['Minha carteira','Operações e patrimônio calculados a partir dos seus registros.'],strategies:['Laboratório','Modelos de estudo e simulações quantitativas.'],about:['Integrações','Fontes de dados e condições de atualização.']};
+ if($('header-title'))$('header-title').textContent=titles[view][0];
+ if($('header-subtitle'))$('header-subtitle').textContent=titles[view][1];
  window.scrollTo({top:0,behavior:'instant'});
 }
 async function getJson(url){
@@ -109,7 +154,8 @@ async function getJson(url){
  if(!response.ok)throw Error(String(data.error||`HTTP ${response.status}`));return data;
 }
 async function refresh(){
- $('refresh').disabled=true;$('refresh').textContent='↻ Consultando...';
+ const refreshLabel=$('refresh').innerHTML;
+ $('refresh').disabled=true;$('refresh').textContent='Consultando…';
  $('api-status').classList.remove('error');$('api-status').innerHTML='<span class="dot pulse"></span> Consultando fontes...';
  try{
   const d=await getJson('/api/dashboard');if(d.mode!=='real_market_data'||!Array.isArray(d.quotes)||!Array.isArray(d.fx)||!Array.isArray(d.macro))throw Error('Formato desconhecido da API');
@@ -119,7 +165,7 @@ async function refresh(){
   if(!n){$('api-status').classList.add('error');$('api-status').textContent='Fontes indisponíveis';}
   dashboardView();marketView();portfolioView();providerView();
  }catch(e){$('api-status').classList.add('error');$('api-status').textContent='Falha de conexão';$('notice').innerHTML=`<span>⚠</span><span>O backend não respondeu: ${esc(e.message)}. Nenhum dado fictício foi usado.</span>`;portfolioView();}
- finally{$('refresh').disabled=false;$('refresh').textContent='↻ Atualizar cotações';}
+ finally{$('refresh').disabled=false;$('refresh').innerHTML=refreshLabel;}
 }
 function changeOperationUI(){
  const symbol=$('tx-symbol').value,side=$('tx-side').value,currency=ASSETS[symbol].currency;
@@ -192,6 +238,19 @@ function init(){
  state.transactions=restore();$('tx-date').value=new Date().toLocaleDateString('en-CA');
  document.querySelectorAll('[data-view]').forEach(x=>x.addEventListener('click',()=>navigate(x.dataset.view)));
  document.querySelectorAll('[data-go]').forEach(x=>x.addEventListener('click',()=>navigate(x.dataset.go)));
+ $('overview-strategies').addEventListener('click',event=>{if(event.target.closest('[data-strategy]'))navigate('strategies');});
+ $('overview-portfolio').addEventListener('click',event=>{if(event.target.closest('[data-overview-portfolio]'))navigate('portfolio');});
+ $('global-search-form').addEventListener('submit',event=>{
+  event.preventDefault();const symbol=$('global-search').value.trim().toUpperCase();
+  if(!/^[A-Z0-9.]{1,8}$/.test(symbol)){ $('global-search').setCustomValidity('Informe um ticker válido');$('global-search').reportValidity();return; }
+  $('global-search').setCustomValidity('');
+  navigate('market');
+  if(['BTC','ETH','SOL'].includes(symbol)){const filter=document.querySelector('[data-filter="CRYPTO"]');filter?.click();return;}
+  if(ASSETS[symbol]?.market==='US')$('lookup-market').value='US';else $('lookup-market').value='BR';
+  $('lookup-symbol').value=symbol;
+  lookup({preventDefault(){}});
+ });
+ $('global-search').addEventListener('input',()=>{$('global-search').setCustomValidity('');});
  document.querySelectorAll('[data-filter]').forEach(b=>b.addEventListener('click',()=>{state.filter=b.dataset.filter;document.querySelectorAll('[data-filter]').forEach(x=>x.classList.toggle('selected',x===b));marketView();}));
  $('refresh').addEventListener('click',refresh);
  $('tx-symbol').addEventListener('change',changeOperationUI);$('tx-side').addEventListener('change',changeOperationUI);
@@ -206,6 +265,6 @@ function init(){
  });
  $('sim-form').addEventListener('submit',event=>{event.preventDefault();simulationView();});
  $('lookup-form').addEventListener('submit',lookup);$('history-form').addEventListener('submit',history);
- strategiesView();simulationView();portfolioView();changeOperationUI();refresh();
+ overviewStrategyPreview();strategiesView();simulationView();portfolioView();changeOperationUI();refresh();
 }
 init();
