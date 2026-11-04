@@ -31,7 +31,7 @@ function marketView(){
  $('overview-stocks').innerHTML=makeRows(d.quotes.filter(q=>q.market==='BR'),true);
  $('market-count').textContent=`${available.length} cotações disponíveis · cache até 5 min`;
  const warnings=[];
- if(d.availability?.coingecko==='key_required')warnings.push('CoinGecko: registre a chave gratuita Demo no backend para visualizar criptomoedas.');
+ if(d.availability?.coingecko==='key_required'&&!d.quotes.some(q=>q.market==='CRYPTO'))warnings.push('Criptomoedas indisponíveis na fonte pública. Você pode ativar CoinGecko Demo como alternativa.');
  if(d.availability?.twelvedata==='key_required')warnings.push('Twelve Data: registre a chave gratuita no backend para visualizar ações e ETFs dos EUA.');
  for(const error of d.errors||[])warnings.push(`${error.source}: ${error.message}`);
  $('market-warnings').innerHTML=warnings.map(t=>`<div class="warning">${esc(t)}</div>`).join('');
@@ -44,7 +44,7 @@ function dashboardView(){
   {title:'DÓLAR DE REFERÊNCIA',value:usd?money(usd.rate):'Indisponível',foot:usd?`Frankfurter · ${usd.date}`:'Fonte indisponível'},
   {title:'EURO DE REFERÊNCIA',value:eur?money(eur.rate):'Indisponível',foot:eur?`Frankfurter · ${eur.date}`:'Fonte indisponível'},
   {title:'META SELIC',value:selic?`${number(selic.value)}%`:'Indisponível',foot:selic?`BCB · ${selic.date}`:'Fonte indisponível'},
-  {title:'BITCOIN / BRL',value:btc?money(btc.price):'Sem cotação',foot:btc?`CoinGecko · ${formatTime(btc.providerAsOf)}`:'Ative chave CoinGecko'}
+  {title:'BITCOIN / BRL',value:btc?money(btc.price):'Sem cotação',foot:btc?`${btc.provider} · ${formatTime(btc.providerAsOf)}`:'Fonte de cripto indisponível'}
  ];
  $('overview-kpis').innerHTML=kpis.map(i=>`<article class="metric-card"><div class="metric-title">${esc(i.title)}</div><div class="metric-value">${esc(i.value)}</div><div class="metric-foot">${esc(i.foot)}</div></article>`).join('');
  $('hero-count').textContent=String(d.quotes.length).padStart(2,'0');
@@ -56,13 +56,14 @@ function providerView(){
   ['brapi','Ações brasileiras','PETR4, VALE3, ITUB4, MGLU3 sem chave; outros tickers requerem plano compatível.'],
   ['frankfurter','Câmbio de referência','USD/BRL e EUR/BRL, atualizações diárias; não equivale à PTAX e nem ao câmbio de compra.'],
   ['bcb','Banco Central','Meta Selic oficial, série SGS 432; não confundir com CDI efetivo.'],
-  ['coingecko','Criptomoedas','BTC, ETH e SOL com chave CoinGecko Demo (grátis, sujeita a limites).'],
+  ['coingecko','Criptomoedas — CoinGecko','Fonte global opcional, exige chave Demo gratuita e está sujeita a limites.'],
+  ['mercadobitcoin','Criptomoedas — Mercado Bitcoin','Preço da última negociação BTC, ETH e SOL em BRL na exchange; fonte pública, sem chave.'],
   ['twelvedata','Ações e ETFs internacionais','VOO, QQQ e AAPL com chave Twelve Data; sujeito às permissões do plano gratuito.']
  ];
  const avail=state.data?.availability||{};
  $('provider-grid').innerHTML=catalog.map(([key,title,desc])=>{
-  const status=avail[key]||'unavailable';const label={available:'Consultado',key_required:'Chave necessária',partial_failure:'Falha parcial',unavailable:'Pendente'}[status];
-  const cls=status==='available'?'good':status==='key_required'?'waiting':'bad';
+  const status=avail[key]||'unavailable';const label={available:'Consultado',key_required:key==='coingecko'?'Chave opcional':'Chave necessária',standby:'Alternativa disponível',partial_failure:'Falha parcial',unavailable:'Pendente'}[status];
+  const cls=status==='available'?'good':status==='key_required'||status==='standby'?'waiting':'bad';
   return `<article class="provider-card"><h3>${esc(title)}</h3><p>${esc(desc)}</p><span class="provider-state ${cls}">${label}</span></article>`;
  }).join('');
 }

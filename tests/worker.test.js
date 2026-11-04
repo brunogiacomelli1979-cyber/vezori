@@ -1,12 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import worker,{BR_SYMBOLS,buildDashboard,brazilQuote,historyQuote,cryptoQuotes} from '../src/worker.js';
+import worker,{BR_SYMBOLS,buildDashboard,brazilQuote,historyQuote,cryptoQuotes,mercadoBitcoinQuotes} from '../src/worker.js';
 function fakeFetch(url,options={}){
  const uri=new URL(url);let obj;
  if(uri.hostname==='brapi.dev'){
   const symbol=uri.searchParams.get('symbols');
   if(uri.pathname.includes('/historical'))obj={results:[{symbol,data:{historicalDataPrice:[{date:1793450000,close:25,adjustedClose:25.5},{date:1793536400,close:26,adjustedClose:26.5}]}}]};
   else obj={results:[{symbol,data:{shortName:'Empresa '+symbol,currency:'BRL',regularMarketPrice:40.25,regularMarketChangePercent:1.3,regularMarketTime:'2026-11-04T11:00:00Z'}}]};
+ }else if(uri.hostname==='api.mercadobitcoin.net'){
+  obj=[
+   {pair:'BTC-BRL',last:'390000.00',date:1793800000000000000},
+   {pair:'ETH-BRL',last:'18000.00',date:1793800000000000000},
+   {pair:'SOL-BRL',last:'990.00',date:1793800000000000000}
+  ];
  }else if(uri.hostname==='api.frankfurter.dev')obj={base:uri.pathname.includes('usd')?'USD':'EUR',quote:'BRL',rate:uri.pathname.includes('usd')?5.4:6.3,date:'2026-11-03'};
  else if(uri.hostname==='api.bcb.gov.br')obj=[{data:'04/11/2026',valor:'13.75'}];
  else if(uri.hostname==='api.coingecko.com'){
@@ -22,7 +28,9 @@ function fakeFetch(url,options={}){
 }
 test('sem chaves: fontes públicas retornam ações BR, FX e Selic, sem fabricar outras',async()=>{
  const d=await buildDashboard({},fakeFetch);
- assert.equal(d.quotes.length,4);assert.deepEqual(d.quotes.map(x=>x.symbol),BR_SYMBOLS);
+ assert.equal(d.quotes.length,7);assert.deepEqual(d.quotes.filter(x=>x.market==='BR').map(x=>x.symbol),BR_SYMBOLS);
+ assert.equal(d.quotes.find(x=>x.symbol==='BTC').price,390000);
+ assert.equal(d.availability.mercadobitcoin,'available');
  assert.equal(d.fx.length,2);assert.equal(d.macro[0].value,13.75);
  assert.equal(d.availability.coingecko,'key_required');assert.equal(d.availability.twelvedata,'key_required');assert.equal(d.meta.simulatedPrices,false);
 });
@@ -34,7 +42,7 @@ test('com chaves: CoinGecko e Twelve Data entram na carteira de mercado sem vaza
 });
 test('falha de provedor não produz números substitutos',async()=>{
  const failure=(url,options)=>String(url).includes('VALE3')?Promise.resolve(new Response('limite',{status:429})):fakeFetch(url,options);
- const d=await buildDashboard({},failure);assert.equal(d.quotes.length,3);
+ const d=await buildDashboard({},failure);assert.equal(d.quotes.length,6);
  assert.equal(d.availability.brapi,'partial_failure');assert.equal(d.quotes.some(q=>q.symbol==='VALE3'),false);
 });
 test('símbolos BR arbitrários exigem token e não permitem URL arbitrária',async()=>{
@@ -69,7 +77,7 @@ test('rota dashboard executa serviço real sem depender da interface',async()=>{
  try{
   const res=await worker.fetch(new Request('https://vezori.workers.dev/api/dashboard'),{},{});
   assert.equal(res.status,200);const body=await res.json();
-  assert.equal(body.mode,'real_market_data');assert.equal(body.quotes.length,4);
+  assert.equal(body.mode,'real_market_data');assert.equal(body.quotes.length,7);
   assert.equal(body.quotes.find(x=>x.symbol==='PETR4').price,40.25);
  }finally{globalThis.fetch=original;}
 });
@@ -81,4 +89,20 @@ test('rota history retorna série validada e sem preços inventados',async()=>{
   assert.equal(body.provider,'brapi');assert.equal(body.points.length,2);
   assert.equal(body.points[0].close,25.5);
  }finally{globalThis.fetch=original;}
+});
+
+test('Mercado Bitcoin publica ultimo preco em BRL e timestamp sem inventar percentual',async()=>{
+ const rows=await mercadoBitcoinQuotes(fakeFetch);
+ assert.equal(rows.length,3);
+ assert.equal(rows.find(r=>r.symbol==='BTC').price,390000);
+ assert.equal(rows.find(r=>r.symbol==='ETH').provider,'Mercado Bitcoin');
+ assert.equal(rows.find(r=>r.symbol==='BTC').changePct,null);
+ assert.match(rows[0].providerAsOf,/^2026-/);
+});
+test('quando a fonte publica de cripto falha, nao aparece preco de fallback ficticio',async()=>{
+ const failing=(url,opts)=>String(url).includes('mercadobitcoin.net')?Promise.resolve(new Response('error',{status:429})):fakeFetch(url,opts);
+ const d=await buildDashboard({},failing);
+ assert.equal(d.quotes.some(q=>q.market==='CRYPTO'),false);
+ assert.equal(d.availability.mercadobitcoin,'partial_failure');
+ assert.equal(d.errors.some(e=>e.source==='mercadobitcoin'),true);
 });
