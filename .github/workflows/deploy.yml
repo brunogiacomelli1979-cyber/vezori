@@ -43,3 +43,31 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy
+
+      - name: Validar site e dados reais publicados
+        if: ${{ env.CF_TOKEN_CONFIGURED == 'true' && env.CF_ACCOUNT_CONFIGURED == 'true' }}
+        env:
+          SITE_URL: https://vezori.bruno-giacomelli1979.workers.dev
+        run: |
+          node --input-type=module <<'NODE'
+          const root = process.env.SITE_URL;
+          async function read(path) {
+            const response = await fetch(root + path, {signal: AbortSignal.timeout(25000)});
+            if (!response.ok) throw new Error(path + ': HTTP ' + response.status);
+            return path === '/' ? response.text() : response.json();
+          }
+          const html = await read('/');
+          if (!/VEZORI/i.test(html)) throw new Error('A pagina principal nao contem a marca VEZORI');
+          const health = await read('/api/health');
+          if (health.service !== 'VEZORI' || health.status !== 'ok') throw new Error('API de saude invalida');
+          const market = await read('/api/dashboard');
+          if (market.mode !== 'real_market_data' || market.meta?.simulatedPrices !== false) throw new Error('Metadados de mercado invalidos');
+          if (!Array.isArray(market.quotes) || !Array.isArray(market.errors)) throw new Error('Contrato de dashboard invalido');
+          const validQuotes = market.quotes.filter(q => Number.isFinite(q.price) && q.price > 0 && q.provider);
+          console.log('SITE ONLINE:', root);
+          console.log('HEALTH:', health.status);
+          console.log('COTACOES COM PRECO REAL:', validQuotes.length);
+          console.log('CAMBIO:', market.fx?.length ?? 0, 'MACRO:', market.macro?.length ?? 0);
+          console.log('FALHAS DE PROVEDOR:', JSON.stringify(market.errors));
+          if (!validQuotes.length) throw new Error('Nenhuma cotacao real disponivel no dashboard; revisar conectores');
+          NODE
