@@ -1,0 +1,221 @@
+/** VEZORI 2.0 — exploration, issuer/asset detail, and comparisons.
+ * Data contracts are explicit: absent financial fundamentals are never inferred.
+ * Charts reflect provider price closes; not total returns and not normalized across currencies.
+ */
+import {ASSETS} from './finance.js';
+
+const $=id=>document.getElementById(id);
+const esc=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+const num=(value,d=2)=>new Intl.NumberFormat('pt-BR',{maximumFractionDigits:d}).format(value);
+const currency=(value,ccy='BRL')=>value==null||!Number.isFinite(value)?'—':new Intl.NumberFormat('pt-BR',{style:'currency',currency:ccy,maximumFractionDigits:2}).format(value);
+const percent=value=>value==null||!Number.isFinite(value)?'—':`${value>0?'+':''}${num(value)}%`;
+const byMarket={BR:'Ações Brasil',US:'EUA / ETFs',CRYPTO:'Criptomoedas'};
+const marketOf=symbol=>ASSETS[symbol]?.market;
+const delta=value=>value==null||!Number.isFinite(value)?'':value>0?'positive':value<0?'negative':'';
+const when=value=>{
+ if(!value)return 'Horário não informado';
+ const t=Date.parse(value);
+ return Number.isFinite(t)?new Date(t).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):String(value).slice(0,24);
+};
+const validPoint=p=>p&&/^\d{4}-\d{2}-\d{2}$/.test(p.date)&&typeof p.close==='number'&&Number.isFinite(p.close)&&p.close>0;
+
+/** Normalized overlapping close-to-close price series, base 100 on a single common date. */
+export function alignNormalizedSeries(series){
+ if(!Array.isArray(series)||series.length<2||series.length>5)throw Error('Selecione de 2 a 5 séries históricas');
+ const prepared=series.map(s=>({symbol:s.symbol,points:new Map((s.points||[]).filter(validPoint).map(p=>[p.date,p.close]))}));
+ let common=[...prepared[0].points.keys()];
+ for(const s of prepared.slice(1))common=common.filter(d=>s.points.has(d));
+ common.sort();
+ if(common.length<2)return {dates:[],datasets:[],message:'Não existem ao menos duas datas em comum entre as séries.'};
+ const datasets=prepared.map(s=>({symbol:s.symbol,values:common.map(date=>100*s.points.get(date)/s.points.get(common[0]))}));
+ return {dates:common,datasets,message:null};
+}
+
+export function summarizeHistory(series){
+ const points=(series?.points||[]).filter(validPoint).slice().sort((a,b)=>a.date.localeCompare(b.date));
+ if(points.length<2)return null;
+ const first=points[0],last=points.at(-1);
+ const values=points.map(p=>p.close);
+ return {first:first.date,last:last.date,firstClose:first.close,lastClose:last.close,min:Math.min(...values),max:Math.max(...values),returnPct:(last.close/first.close-1)*100,count:points.length};
+}
+
+/** Market universe is intentionally fixed to assets supported by validated endpoints. */
+export function explorationRows(data={},opts={}){
+ const {search='',market='all',sort='symbol'}=opts;
+ const quotes=new Map((data.quotes||[]).filter(q=>marketOf(q.symbol)&&Number.isFinite(q.price)&&q.price>0).map(q=>[q.symbol,q]));
+ let rows=Object.entries(ASSETS).map(([symbol,meta])=>({symbol,...meta,quote:quotes.get(symbol)||null}));
+ const match=String(search).trim().toLocaleLowerCase('pt-BR');
+ rows=rows.filter(row=>(market==='all'||market===row.market)&&(!match||`${row.symbol} ${row.name}`.toLocaleLowerCase('pt-BR').includes(match)));
+ const collate=(a,b)=>a.symbol.localeCompare(b.symbol);
+ if(sort==='variation')rows.sort((a,b)=>(b.quote?.changePct??-Infinity)-(a.quote?.changePct??-Infinity)||collate(a,b));
+ else if(sort==='price')rows.sort((a,b)=>(b.quote?.price??-Infinity)-(a.quote?.price??-Infinity)||collate(a,b));
+ else if(sort==='availability')rows.sort((a,b)=>(!!b.quote)-(!!a.quote)||collate(a,b));
+ else rows.sort(collate);
+ return rows;
+}
+
+export function createResearchTools({state,navigate,getJson}){
+ let search='',market='all',sort='availability',selected='PETR4',period='1mo',comparePeriod='1mo';
+ const members=new Set(['PETR4','VALE3']);
+ const historyCache=new Map();
+ let detailChart=null,comparisonChart=null,detailRequest=0,compareRequest=0;
+ const supported=s=>Object.hasOwn(ASSETS,s);
+ const quote=s=>(state.data?.quotes||[]).find(q=>q.symbol===s)||null;
+ const historyKey=(symbol,range)=>`${symbol}:${range}`;
+ const fetchHistory=async(symbol,range)=>{
+  if(!supported(symbol))throw Error('Ativo não suportado');
+  if(!['1mo','3mo'].includes(range))throw Error('Período inválido');
+  const key=historyKey(symbol,range),cached=historyCache.get(key);
+  if(cached&&Date.now()-cached.time<600000)return cached.promise;
+  const promise=getJson(`/api/history?market=${marketOf(symbol)}&symbol=${encodeURIComponent(symbol)}&range=${range}`)
+    .then(data=>{
+      if(data.symbol!==symbol||data.market!==marketOf(symbol)||!Array.isArray(data.points))throw Error('Contrato de série histórica inconsistente');
+      return data;
+    });
+  historyCache.set(key,{promise,time:Date.now()});
+  try{return await promise;}catch(e){historyCache.delete(key);throw e;}
+ };
+ function renderExplorer(){
+  const body=$('research-explore-body');if(!body)return;
+  const rows=explorationRows(state.data||{}, {search,market,sort});
+  const live=rows.filter(r=>!!r.quote).length;
+  $('research-explore-count').textContent=`${live} com cotação · ${rows.length} no filtro · universo de ${Object.keys(ASSETS).length} ativos cadastrados`;
+  body.innerHTML=rows.length?rows.map(({symbol,name,market,currency:ccy,quote:q})=>`<tr>
+   <td><button type="button" class="research-ticker" data-research-detail="${symbol}">${esc(symbol)}</button><span class="research-symbol-sub">${esc(name)}</span></td>
+   <td><span class="research-type">${esc(byMarket[market])}</span></td>
+   <td class="research-num">${q?currency(q.price,q.currency):'—'}</td>
+   <td class="research-num ${delta(q?.changePct)}">${percent(q?.changePct)}</td>
+   <td><span class="research-provider">${q?esc(q.provider):'Indisponível'}</span><span class="research-symbol-sub">${q?esc(when(q.providerAsOf)):'Sem cotação neste plano ou nesta consulta'}</span></td>
+   <td><div class="research-actions"><button type="button" class="research-small-btn" data-research-detail="${symbol}">Analisar</button><button type="button" class="research-small-btn ${members.has(symbol)?'selected':''}" data-research-toggle="${symbol}" aria-pressed="${members.has(symbol)}">${members.has(symbol)?'Selecionado':'Comparar'}</button></div></td>
+  </tr>`).join(''):'<tr><td colspan="6" class="research-empty">Nenhum ativo corresponde à pesquisa.</td></tr>';
+ }
+ function setChart(which,labels,datasets,labelMode='value'){
+  const canvas=$(which==='detail'?'research-asset-chart':'research-compare-chart');
+  if(!canvas)return;
+  if(which==='detail'&&detailChart){detailChart.destroy();detailChart=null;}
+  if(which==='compare'&&comparisonChart){comparisonChart.destroy();comparisonChart=null;}
+  const fallback=$(which==='detail'?'research-asset-chart-fallback':'research-compare-chart-fallback');
+  if(!window.Chart){canvas.hidden=true;fallback.hidden=false;fallback.textContent='Gráfico indisponível no navegador. Utilize os indicadores numéricos e as fontes abaixo.';return;}
+  canvas.hidden=false;fallback.hidden=true;
+  const colors=['#10b981','#60a5fa','#f59e0b','#a78bfa','#f472b6'];
+  const chart=new window.Chart(canvas,{type:'line',data:{labels,datasets:datasets.map((s,i)=>({label:s.symbol,data:s.values,borderColor:colors[i],backgroundColor:`${colors[i]}18`,pointRadius:labels.length>35?0:1.5,pointHoverRadius:4,tension:.12,borderWidth:2,fill:datasets.length===1,spanGaps:false}))},options:{responsive:true,maintainAspectRatio:false,animation:false,interaction:{intersect:false,mode:'index'},plugins:{legend:{display:datasets.length>1,labels:{color:'#c4d2e0',boxWidth:12,boxHeight:3}},tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${labelMode==='normalized'?num(ctx.parsed.y,2):currency(ctx.parsed.y,quote(selected)?.currency||ASSETS[selected].currency)}`}}},scales:{x:{ticks:{maxTicksLimit:8,color:'#97a9b9'},grid:{display:false}},y:{ticks:{color:'#97a9b9',callback:value=>labelMode==='normalized'?num(value,0):num(value,2)},grid:{color:'rgba(148,163,184,.12)'}}}}});
+  if(which==='detail')detailChart=chart;else comparisonChart=chart;
+ }
+ function renderDetailHeader(){
+  const q=quote(selected),meta=ASSETS[selected];
+  $('research-asset-name').textContent=`${selected} · ${meta.name}`;
+  $('research-asset-type').textContent=`${byMarket[meta.market]} · ${meta.currency}`;
+  $('research-asset-price').textContent=q?currency(q.price,q.currency):'Sem cotação';
+  $('research-asset-change').textContent=percent(q?.changePct);
+  $('research-asset-change').className=`research-value-change ${delta(q?.changePct)}`;
+  $('research-asset-source').textContent=q?`${q.provider} · ${when(q.providerAsOf)} · consulta ${when(q.retrievedAt)}`:'Cotação não disponível na configuração atual. Não foi utilizado valor estimado.';
+  $('research-asset-symbol').value=selected;
+ }
+ async function renderDetail(){
+  renderDetailHeader();
+  const request=++detailRequest;
+  $('research-asset-history-status').textContent='Consultando série histórica no provedor…';
+  $('research-asset-details').innerHTML='';
+  const canvas=$('research-asset-chart');canvas.hidden=true;
+  if(detailChart){detailChart.destroy();detailChart=null;}
+  $('research-asset-chart-fallback').hidden=false;
+  $('research-asset-chart-fallback').textContent='Consultando preços de fechamento…';
+  try{
+   const series=await fetchHistory(selected,period);
+   if(request!==detailRequest)return;
+   const summary=summarizeHistory(series);
+   if(!summary)throw Error('Menos de dois fechamentos válidos no período');
+   const points=series.points.filter(validPoint).slice().sort((a,b)=>a.date.localeCompare(b.date));
+   $('research-asset-history-status').textContent=`${summary.count} observações · ${series.provider} · ${summary.first} a ${summary.last} · ${series.priceBasis}`;
+   $('research-asset-details').innerHTML=`<div><span>Retorno de preço no período</span><strong class="${delta(summary.returnPct)}">${percent(summary.returnPct)}</strong></div><div><span>Menor fechamento</span><strong>${currency(summary.min,series.currency)}</strong></div><div><span>Maior fechamento</span><strong>${currency(summary.max,series.currency)}</strong></div><div><span>Último fechamento</span><strong>${currency(summary.lastClose,series.currency)}</strong></div>`;
+   setChart('detail',points.map(p=>p.date),[{symbol:selected,values:points.map(p=>p.close)}]);
+  }catch(err){
+   if(request!==detailRequest)return;
+   $('research-asset-history-status').textContent=`Histórico indisponível: ${err.message}`;
+   $('research-asset-chart-fallback').hidden=false;
+   $('research-asset-chart-fallback').textContent='Sem série verificável para o período. Não produzimos um gráfico artificial.';
+  }
+ }
+ function renderSelected(){
+  $('research-compare-selection').innerHTML=[...members].map(s=>`<button type="button" class="research-chip" data-research-remove="${s}" title="Remover ${s} da seleção">${esc(s)} ×</button>`).join('');
+  $('research-compare-count').textContent=`${members.size} de 5 ativos selecionados`;
+  $('research-compare-run').disabled=members.size<2;
+  const choices=$('research-compare-add');
+  choices.innerHTML='<option value="">Adicionar um ativo…</option>'+Object.keys(ASSETS).filter(s=>!members.has(s)).map(s=>`<option value="${s}">${s} · ${esc(ASSETS[s].name)}</option>`).join('');
+  renderExplorer();
+ }
+ function addCompare(symbol){
+  if(!supported(symbol))return;
+  if(members.has(symbol))return;
+  if(members.size>=5){$('research-explore-count').textContent='Limite de 5 ativos no comparador. Remova um antes de adicionar outro.';return;}
+  members.add(symbol);renderSelected();
+ }
+ async function renderComparison(){
+  const symbols=[...members];if(symbols.length<2)return;
+  const request=++compareRequest;
+  $('research-compare-status').textContent='Consultando séries reais…';
+  $('research-compare-foot').textContent='';
+  $('research-compare-chart').hidden=true;
+  if(comparisonChart){comparisonChart.destroy();comparisonChart=null;}
+  $('research-compare-chart-fallback').hidden=false;
+  $('research-compare-chart-fallback').textContent='Comparando datas de fechamento em comum…';
+  const fetched=[];const failures=new Map();
+  // Two in-flight requests at a time to avoid stressing free APIs.
+  for(let i=0;i<symbols.length;i+=2){
+   const batch=await Promise.allSettled(symbols.slice(i,i+2).map(symbol=>fetchHistory(symbol,comparePeriod)));
+   batch.forEach((r,j)=>{
+    const symbol=symbols[i+j];
+    if(r.status==='fulfilled'&&summarizeHistory(r.value))fetched.push(r.value);
+    else failures.set(symbol,r.status==='rejected'?r.reason.message:'Série insuficiente');
+   });
+  }
+  if(request!==compareRequest)return;
+  $('research-compare-table').innerHTML=symbols.map(symbol=>{
+   const q=quote(symbol),history=fetched.find(s=>s.symbol===symbol),summary=history?summarizeHistory(history):null;
+   return `<tr><td><strong>${esc(symbol)}</strong><span class="research-symbol-sub">${esc(ASSETS[symbol].name)}</span></td><td>${esc(byMarket[ASSETS[symbol].market])}</td><td class="research-num">${q?currency(q.price,q.currency):'—'}</td><td class="research-num ${delta(q?.changePct)}">${percent(q?.changePct)}</td><td class="research-num ${delta(summary?.returnPct)}">${percent(summary?.returnPct)}</td><td><span class="research-provider">${q?esc(q.provider):'Sem preço'}</span><span class="research-symbol-sub">${summary?`${esc(history.provider)} · ${summary.first} — ${summary.last}`:esc(failures.get(symbol)||'Série não disponível')}</span></td></tr>`;
+  }).join('');
+  if(fetched.length<2){$('research-compare-status').textContent=`Séries comparáveis insuficientes (${fetched.length}/${symbols.length}).`;
+   $('research-compare-chart-fallback').textContent='Não há pelo menos duas séries válidas. Confira limites de acesso às APIs e histórico.';return;}
+  const normalized=alignNormalizedSeries(fetched);
+  if(normalized.dates.length<2){$('research-compare-status').textContent='Séries sem datas suficientes em comum.';
+   $('research-compare-chart-fallback').textContent=normalized.message;return;}
+  $('research-compare-status').textContent=`${normalized.datasets.length} séries · ${normalized.dates.length} datas comuns · Base 100 em ${normalized.dates[0]}`;
+  $('research-compare-foot').textContent=`${fetched.map(s=>`${s.symbol}: ${s.provider} (${s.priceBasis})`).join(' · ')}. Variações calculadas sobre preço de fechamento; não incluem dividendos, custos ou câmbio de conversão. Séries com ajustes distintos podem não ser diretamente comparáveis.`;
+  setChart('compare',normalized.dates,normalized.datasets,'normalized');
+ }
+ function mount(){
+  $('research-explore-search').addEventListener('input',event=>{search=event.target.value;renderExplorer();});
+  $('research-explore-market').addEventListener('change',event=>{market=event.target.value;renderExplorer();});
+  $('research-explore-sort').addEventListener('change',event=>{sort=event.target.value;renderExplorer();});
+  $('research-explore-body').addEventListener('click',event=>{
+   const detail=event.target.closest('[data-research-detail]');
+   if(detail){selectAsset(detail.dataset.researchDetail);return;}
+   const toggle=event.target.closest('[data-research-toggle]');
+   if(toggle){if(members.has(toggle.dataset.researchToggle))members.delete(toggle.dataset.researchToggle);else addCompare(toggle.dataset.researchToggle);renderSelected();}
+  });
+  $('research-asset-symbol').innerHTML=Object.entries(ASSETS).map(([symbol,meta])=>`<option value="${symbol}">${symbol} · ${esc(meta.name)}</option>`).join('');
+  $('research-asset-symbol').addEventListener('change',event=>selectAsset(event.target.value));
+  $('research-asset-period').addEventListener('change',event=>{period=event.target.value;renderDetail();});
+  $('research-asset-add-compare').addEventListener('click',()=>{addCompare(selected);navigate('compare');});
+  $('research-asset-back').addEventListener('click',()=>navigate('market'));
+  $('research-compare-selection').addEventListener('click',event=>{const chip=event.target.closest('[data-research-remove]');if(chip){members.delete(chip.dataset.researchRemove);renderSelected();}});
+  $('research-compare-add').addEventListener('change',event=>{if(event.target.value)addCompare(event.target.value);});
+  $('research-compare-period').addEventListener('change',event=>{comparePeriod=event.target.value;});
+  $('research-compare-run').addEventListener('click',renderComparison);
+  $('research-compare-back').addEventListener('click',()=>navigate('market'));
+  $('research-explore-open-compare').addEventListener('click',()=>navigate('compare'));
+  renderSelected();renderDetailHeader();
+ }
+ function selectAsset(symbol){
+  if(!supported(symbol))return false;
+  selected=symbol;navigate('asset');
+  return true;
+ }
+ function onNavigate(view){
+  if(view==='market')renderExplorer();
+  if(view==='asset')renderDetail();
+  if(view==='compare'){renderSelected();renderComparison();}
+ }
+ function refresh(){renderExplorer();renderDetailHeader();}
+ return {mount,refresh,onNavigate,selectAsset,addCompare};
+}

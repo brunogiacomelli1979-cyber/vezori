@@ -1,5 +1,6 @@
 import {ASSETS,KEY,STRATEGIES,validateTransaction,book,portfolio,portfolioXirr,project,parseBackup} from './finance.js';
 import {createApexDashboard} from './apex-ui.js';
+import {createResearchTools} from './research.js';
 
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -10,6 +11,7 @@ const formatTime=t=>{if(!t)return 'Não informada';const d=new Date(t);return Nu
 const cssChange=n=>n>0?'positive':n<0?'negative':'flat';
 const state={data:null,transactions:[],active:'overview',filter:'all'};
 let apexUI=null;
+let researchTools=null;
 const save=()=>localStorage.setItem(KEY,JSON.stringify({version:3,brand:'VEZORI',savedAt:new Date().toISOString(),transactions:state.transactions}));
 function restore(){
  try{
@@ -142,14 +144,15 @@ function simulationView(){
  }catch(e){$('sim-result').textContent=e.message;$('sim-chart').innerHTML='';}
 }
 function navigate(view){
- if(!['overview','market','portfolio','strategies','about'].includes(view))return;
+ if(!['overview','market','asset','compare','portfolio','strategies','about'].includes(view))return;
  state.active=view;
  document.querySelectorAll('.view').forEach(el=>el.classList.toggle('active',el.id==='view-'+view));
  document.querySelectorAll('.nav').forEach(el=>el.classList.toggle('active',el.dataset.view===view));
- $('breadcrumb').textContent={overview:'VISÃO GERAL',market:'MERCADO REAL',portfolio:'MINHA CARTEIRA',strategies:'LABORATÓRIO',about:'INTEGRAÇÕES'}[view];
- const titles={overview:['Visão geral','Inteligência de mercado, carteira e estratégias em um só lugar.'],market:['Mercado real','Cotações, comparações e séries históricas verificáveis.'],portfolio:['Minha carteira','Operações e patrimônio calculados a partir dos seus registros.'],strategies:['Laboratório','Modelos de estudo e simulações quantitativas.'],about:['Integrações','Fontes de dados e condições de atualização.']};
+ $('breadcrumb').textContent={overview:'VISÃO GERAL',market:'EXPLORAR ATIVOS',asset:'FICHA DO ATIVO',compare:'COMPARADOR',portfolio:'MINHA CARTEIRA',strategies:'LABORATÓRIO',about:'INTEGRAÇÕES'}[view];
+ const titles={overview:['Visão geral','Inteligência de mercado, carteira e estratégias em um só lugar.'],market:['Explorar ativos','Pesquise, filtre e analise ativos com dados verificáveis.'],asset:['Ficha do ativo','Preços e históricos reais, com origem e metodologia.'],compare:['Comparador','Preços e desempenhos normalizados em datas coincidentes.'],portfolio:['Minha carteira','Operações e patrimônio calculados a partir dos seus registros.'],strategies:['Laboratório','Modelos de estudo e simulações quantitativas.'],about:['Integrações','Fontes de dados e condições de atualização.']};
  if($('header-title'))$('header-title').textContent=titles[view][0];
  if($('header-subtitle'))$('header-subtitle').textContent=titles[view][1];
+ researchTools?.onNavigate(view);
  window.scrollTo({top:0,behavior:'instant'});
 }
 async function getJson(url){
@@ -167,7 +170,7 @@ async function refresh(){
   const n=d.quotes.length+d.fx.length+d.macro.length;
   $('api-status').innerHTML=`<span class="dot"></span> ${n} dados reais recebidos`;
   if(!n){$('api-status').classList.add('error');$('api-status').textContent='Fontes indisponíveis';}
-  dashboardView();marketView();portfolioView();providerView();
+  dashboardView();marketView();portfolioView();providerView();researchTools?.refresh();
  }catch(e){$('api-status').classList.add('error');$('api-status').textContent='Falha de conexão';$('notice').innerHTML=`<span>⚠</span><span>O backend não respondeu: ${esc(e.message)}. Nenhum dado fictício foi usado.</span>`;portfolioView();}
  finally{$('refresh').disabled=false;$('refresh').innerHTML=refreshLabel;}
 }
@@ -241,6 +244,7 @@ async function history(e){
 function init(){
  state.transactions=restore();$('tx-date').value=new Date().toLocaleDateString('en-CA');
  apexUI=createApexDashboard({state,save,portfolioView,navigate});apexUI.mount();
+ researchTools=createResearchTools({state,navigate,getJson});researchTools.mount();
  document.querySelectorAll('[data-view]').forEach(x=>x.addEventListener('click',()=>navigate(x.dataset.view)));
  document.querySelectorAll('[data-go]').forEach(x=>x.addEventListener('click',()=>navigate(x.dataset.go)));
  $('overview-strategies').addEventListener('click',event=>{if(event.target.closest('[data-strategy]'))navigate('strategies');});
@@ -249,11 +253,8 @@ function init(){
   event.preventDefault();const symbol=$('global-search').value.trim().toUpperCase();
   if(!/^[A-Z0-9.]{1,8}$/.test(symbol)){ $('global-search').setCustomValidity('Informe um ticker válido');$('global-search').reportValidity();return; }
   $('global-search').setCustomValidity('');
-  navigate('market');
-  if(['BTC','ETH','SOL'].includes(symbol)){const filter=document.querySelector('[data-filter="CRYPTO"]');filter?.click();return;}
-  if(ASSETS[symbol]?.market==='US')$('lookup-market').value='US';else $('lookup-market').value='BR';
-  $('lookup-symbol').value=symbol;
-  lookup({preventDefault(){}});
+  if(ASSETS[symbol]){researchTools.selectAsset(symbol);return;}
+  navigate('market');$('lookup-market').value='BR';$('lookup-symbol').value=symbol;lookup({preventDefault(){}});
  });
  $('global-search').addEventListener('input',()=>{$('global-search').setCustomValidity('');});
  document.querySelectorAll('[data-filter]').forEach(b=>b.addEventListener('click',()=>{state.filter=b.dataset.filter;document.querySelectorAll('[data-filter]').forEach(x=>x.classList.toggle('selected',x===b));marketView();}));

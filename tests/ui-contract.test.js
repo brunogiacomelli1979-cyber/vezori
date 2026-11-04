@@ -47,3 +47,13 @@ test('layout Apex integrado com dados reais e módulos anteriores',()=>{
  assert.match(app,/createApexDashboard\(\{state,save,portfolioView,navigate\}\)/);
  assert.match(app,/apexUI\?\.render\(\)/);
 });
+
+test('VEZORI 2.0 mantém módulos e conecta exploração e comparação',()=>{
+ for(const name of ['overview','market','asset','compare','portfolio','strategies','about']){
+  assert.ok(html.includes('id="view-'+name+'"'));
+  assert.ok(html.includes('data-view="'+name+'"'));
+ }
+ assert.match(html,/research\.css\?v=20/);
+ assert.match(app,/createResearchTools/);
+ assert.match(app,/researchTools\?\.onNavigate\(view\)/);
+});
