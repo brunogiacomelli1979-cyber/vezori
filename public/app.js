@@ -39,9 +39,9 @@ function marketView(){
 function overviewStrategyPreview(){
  const container=$('overview-strategies');
  if(!container)return;
- const symbols=['◎','↗','◈'];
+ const symbols=['01','02','03'];
  container.innerHTML=STRATEGIES.slice(0,3).map((strategy,i)=>
-  `<button class="strategy-preview-item" type="button" data-strategy="${i}"><span class="strategy-symbol" aria-hidden="true">${symbols[i]}</span><span class="strategy-preview-text"><strong>${esc(strategy.title)}</strong><small>${esc(strategy.by)}</small></span><span class="strategy-arrow" aria-hidden="true">↗</span></button>`
+  `<button class="strategy-preview-item" type="button" data-strategy="${i}"><span class="strategy-symbol" aria-hidden="true">${symbols[i]}</span><span class="strategy-preview-text"><strong>${esc(strategy.title)}</strong><small>${esc(strategy.by)}</small></span><span class="strategy-arrow" aria-hidden="true">→</span></button>`
  ).join('');
 }
 function overviewPortfolioPreview(summary){
@@ -54,7 +54,7 @@ function overviewPortfolioPreview(summary){
   target.innerHTML=`<div class="portfolio-empty"><span class="portfolio-empty-icon" aria-hidden="true">!</span><strong>Patrimônio ainda não consolidado</strong><p>${summary.coverage} de ${summary.total} posições possuem cotação válida. O total não é exibido até completar a cobertura.</p><button class="text-link" type="button" data-overview-portfolio>Ver posições ↗</button></div>`;
   return;
  }
- const colors={BR:'#46d3b6',US:'#5a9dca',CRYPTO:'#e8bb72'};
+ const colors={BR:'#397f6d',US:'#718f9e',CRYPTO:'#c9a56e'};
  const names={BR:'Brasil',US:'Exterior',CRYPTO:'Cripto'};
  const amounts={BR:0,US:0,CRYPTO:0};
  for(const row of summary.rows){const m=ASSETS[row.symbol].market;if(Object.hasOwn(amounts,m))amounts[m]+=row.marketBRL;}

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <meta name="theme-color" content="#091521" />
+  <meta name="theme-color" content="#f4f6f7" />
   <meta name="description" content="Plataforma independente de inteligência de investimentos com cotações reais e laboratório de estratégias." />
   <title>VEZORI | Plataforma de Inteligência de Investimentos</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
@@ -15,7 +15,7 @@
   <div class="shell">
     <aside class="sidebar" aria-label="Navegação principal">
       <a class="brand" href="#overview" aria-label="VEZORI — início">
-        <span class="brand-icon" aria-hidden="true">V<span class="gold-dot">.</span></span>
+        <span class="brand-icon" aria-hidden="true">V</span>
         <span class="brand-words"><strong>VEZORI</strong><small>VEJA ALÉM DOS NÚMEROS</small></span>
       </a>
       <div class="workspace-label">PLATAFORMA <span>01 / 05</span></div>
@@ -27,7 +27,7 @@
         <button class="nav" data-view="about" type="button"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M17.5 13.5v8m-4-4h8"/></svg> Integrações</button>
       </nav>
       <div class="sidebar-bottom"><span class="sidebar-dot" aria-hidden="true"></span><div><strong>Fontes de mercado</strong><br/><small id="sidebar-source-status">Aguardando atualização</small></div></div>
-      <div class="sidebar-footnote"><span class="footnote-glyph" aria-hidden="true">V.</span><span>VEZORI <small>PLATAFORMA DE PESQUISA</small></span><span class="footnote-version">v1.1</span></div>
+      <div class="sidebar-footnote"><span class="footnote-glyph" aria-hidden="true">V.</span><span>VEZORI <small>PLATAFORMA DE PESQUISA</small></span><span class="footnote-version">v1.2</span></div>
     </aside>
     <div class="main-frame">
       <header class="topbar">
@@ -40,18 +40,25 @@
       </header>
       <main id="page-content" class="content">
         <section id="view-overview" class="view active">
-          <div class="hero">
-            <div class="hero-content"><div class="eyebrow">INTELIGÊNCIA FINANCEIRA <span class="eyebrow-separator">/</span> BRASIL & GLOBAL</div><h1>Veja além <em>dos números.</em></h1><p>Dados de mercado, análise de ativos e estratégias de investimento com transparência, clareza e contexto.</p><div class="hero-tags" aria-label="Áreas da plataforma"><span>Mercado brasileiro</span><span>Global</span><span>Criptomoedas</span><span>Macroeconomia</span></div></div>
-            <div class="hero-aside"><div class="hero-side-top"><span class="hero-side-indicator"></span> MERCADO CONECTADO</div><div class="hero-stat"><strong id="hero-count">—</strong><div>ativos com preço<br/>disponível</div></div><div id="hero-time" class="date-readout">Aguardando consulta</div><div class="hero-side-bottom">Dados e fontes identificados <span aria-hidden="true">↗</span></div></div>
+          <div class="overview-intro">
+            <div>
+              <span class="intro-kicker">Mercado · Visão consolidada</span>
+              <h1>Panorama de investimentos</h1>
+              <p>Indicadores de referência, acompanhamento de ativos e ferramentas de análise em um único ambiente.</p>
+            </div>
+            <div class="overview-meta" aria-live="polite">
+              <div class="count-line"><strong id="hero-count">—</strong><span>ativos com cotação<br/>disponível</span></div>
+              <div id="hero-time">Atualização pendente</div>
+            </div>
           </div>
-          <div class="section-heading"><div><div class="eyebrow">MERCADO EM FOCO</div><h2>Indicadores de referência</h2></div><span class="muted small-text">Dados sujeitos a atraso e calendário de cada provedor</span></div>
+          <div class="section-heading"><div><h2>Indicadores de mercado</h2></div><span class="muted small-text">Valores de referência · consulte fonte e data</span></div>
           <div id="overview-kpis" class="kpi-grid" aria-live="polite"><article class="metric-card"><div class="metric-title">DÓLAR DE REFERÊNCIA</div><div class="metric-value skeleton">—</div></article><article class="metric-card"><div class="metric-title">EURO DE REFERÊNCIA</div><div class="metric-value skeleton">—</div></article><article class="metric-card"><div class="metric-title">META SELIC</div><div class="metric-value skeleton">—</div></article><article class="metric-card"><div class="metric-title">BITCOIN / BRL</div><div class="metric-value skeleton">—</div></article></div>
           <div class="dashboard-grid">
             <article class="panel market-summary"><div class="panel-head"><div><h3>Ativos brasileiros</h3><p>Preços e movimentos recentes da B3</p></div><button class="text-link" data-go="market" type="button">Ver todos <span aria-hidden="true">↗</span></button></div><div class="table-wrap"><table><thead><tr><th>ATIVO</th><th>PREÇO</th><th>VARIAÇÃO</th></tr></thead><tbody id="overview-stocks"><tr><td colspan="3">Consultando a brapi...</td></tr></tbody></table></div><div class="panel-foot">Preços sujeitos a atraso <span>Fonte: brapi</span></div></article>
             <article class="panel strategy-summary"><div class="panel-head"><div><h3>Laboratório de estratégias</h3><p>Modelos para estudar alocação e risco</p></div><button class="text-link" data-go="strategies" type="button">Explorar <span aria-hidden="true">↗</span></button></div><div id="overview-strategies" class="strategy-preview-list"></div><p class="micro-note">Modelos didáticos, não carteiras oficiais ou recomendações de investimento.</p></article>
             <article class="panel portfolio-summary-panel"><div class="panel-head"><div><h3>Minha carteira</h3><p>Posições e composição patrimonial</p></div><button class="text-link" data-go="portfolio" type="button">Detalhes <span aria-hidden="true">↗</span></button></div><div id="overview-portfolio" class="portfolio-preview"><div class="empty-preview">Nenhuma operação cadastrada ainda.</div></div><div class="panel-foot">Dados armazenados neste navegador</div></article>
           </div>
-          <article class="panel dashboard-simulation"><div class="simulation-copy"><div class="eyebrow">ESTUDO FINANCEIRO</div><h3>Juros compostos & aportes</h3><p>Explore como aportes recorrentes podem evoluir em diferentes cenários hipotéticos de rentabilidade.</p><button class="button primary" data-go="strategies" type="button">Abrir simulador <span aria-hidden="true">↗</span></button></div><div id="overview-sim-chart" class="dashboard-sim-chart" role="img" aria-label="Projeção matemática hipotética de 10 anos"></div><div id="overview-sim-metrics" class="dashboard-sim-metrics"></div></article>
+          <article class="panel dashboard-simulation"><div class="simulation-copy"><div class="eyebrow">SIMULAÇÃO · CENÁRIO HIPOTÉTICO</div><h3>Juros compostos & aportes</h3><p>Explore como aportes recorrentes podem evoluir em diferentes cenários hipotéticos de rentabilidade.</p><button class="button primary" data-go="strategies" type="button">Abrir simulador <span aria-hidden="true">↗</span></button></div><div id="overview-sim-chart" class="dashboard-sim-chart" role="img" aria-label="Projeção matemática hipotética de 10 anos"></div><div id="overview-sim-metrics" class="dashboard-sim-metrics"></div></article>
           <div id="notice" class="notice" role="status"><span aria-hidden="true">ⓘ</span><span>As cotações são solicitadas aos provedores. Preços indisponíveis não são preenchidos com valores fictícios. Projeções matemáticas não equivalem a resultados de mercado.</span></div>
         </section>
         <section id="view-market" class="view">
@@ -86,7 +93,7 @@
           <div class="panel section-gap"><h3>Política de dados e privacidade</h3><p>Os ativos, transações e custos lançados em Minha Carteira ficam somente no armazenamento local deste navegador. Não existe sincronização entre dispositivos, login ou conexão com contas da Picnic e do Nubank nesta versão. O site não calcula impostos ou rentabilidade líquida tributária automaticamente. Não coloque senhas, tokens, dados bancários ou documentos pessoais nos lançamentos.</p><p>As cotações podem ser de fechamento, com atraso, ou sujeitas à licença de redistribuição. Cada fonte tem condições de uso próprias. A VEZORI é uma plataforma de pesquisa e educação financeira. Não executa ordens nem recomenda investimentos individualizados.</p></div>
         </section>
       </main>
-      <footer class="footer"><span>VEZORI <b>·</b> v1.1</span><span>Pesquise. Compare. Decida com contexto.</span><span id="last-sync">Aguardando atualização</span></footer>
+      <footer class="footer"><span>VEZORI <b>·</b> v1.2</span><span>Preços e indicadores sujeitos às condições dos provedores.</span><span id="last-sync">Aguardando atualização</span></footer>
     </div>
   </div>
 </body>
