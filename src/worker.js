@@ -50,6 +50,37 @@ export async function brazilQuotes(symbols,env={},fetcher=fetch){
  if(!items.length)throw new Error('Provedor sem preços brasileiros válidos');
  return items;
 }
+
+/** Listagem pública da B3: descoberta e dados de cotação, sem prometer histórico ou fundamentos. */
+export async function listB3Catalog({search='',page=1,limit=50}={},fetcher=fetch){
+ const term=String(search||'').trim();
+ if(term.length>60||!(/^[\p{L}\p{N} ._-]*$/u.test(term)))throw Error('Busca inválida');
+ if(!Number.isInteger(page)||page<1||page>200||!Number.isInteger(limit)||limit<1||limit>60)throw Error('Paginação inválida');
+ const url=new URL('https://brapi.dev/api/quote/list');
+ url.searchParams.set('page',String(page));
+ url.searchParams.set('limit',String(limit));
+ url.searchParams.set('sortBy','volume');
+ url.searchParams.set('sortOrder','desc');
+ if(term)url.searchParams.set('search',term);
+ const payload=await readJson(url.toString(),{},fetcher);
+ if(!Array.isArray(payload.stocks))throw Error('Formato da listagem do provedor não reconhecido');
+ const categories=new Set(['stock','unit','fii','etf','bdr','fi-infra','fi-agro','fip','fidc']);
+ const items=payload.stocks.slice(0,limit).flatMap(item=>{
+  const symbol=String(item?.stock||'').trim().toUpperCase();
+  if(!/^[A-Z0-9]{3,12}$/.test(symbol))return [];
+  const price=numeric(item?.close),change=numeric(item?.change);
+  const category=String(item?.subType||item?.type||'').toLowerCase();
+  return [{symbol,name:String(item?.name||symbol).slice(0,90),market:'BR',currency:'BRL',
+   category:categories.has(category)?category:'outro',sector:item?.sector?String(item.sector).slice(0,80):null,
+   price:positive(price)?price:null,changePct:change,provider:'brapi · listagem',
+   providerAsOf:null,retrievedAt:now()}];
+ });
+ return {mode:'real_market_catalog',source:'brapi',items,page,limit,
+  totalCount:Number.isInteger(payload.totalCount)&&payload.totalCount>=0?payload.totalCount:null,
+  hasNextPage:payload.hasNextPage===true,query:term,retrievedAt:now(),
+  note:'Preço de listagem sem carimbo individual de negociação. Histórico e fundamentos dependem do plano da fonte.'};
+}
+
 export async function brazilQuote(symbol,env={},fetcher=fetch){
  const list=await brazilQuotes([symbol],env,fetcher);
  return list[0];
@@ -165,6 +196,16 @@ export default {
   if(!path.startsWith('/api/'))return env.ASSETS?.fetch?env.ASSETS.fetch(request):new Response('VEZORI: inicialize via Cloudflare Wrangler.',{status:404});
   if(request.method!=='GET')return fail('Método não permitido',405);
   if(path==='/api/health')return respond({service:'VEZORI',status:'ok',timestamp:now(),sourcesConfigured:{brapi:!!env.BRAPI_API_KEY,coingecko:!!env.COINGECKO_API_KEY,twelvedata:!!env.TWELVEDATA_API_KEY}});
+
+  if(path==='/api/catalog'){
+   const search=url.searchParams.get('search')||'',page=Number(url.searchParams.get('page')||1),limit=Number(url.searchParams.get('limit')||50);
+   if(search.length>60||!/^[\p{L}\p{N} ._-]*$/u.test(search)||!Number.isInteger(page)||page<1||page>200||!Number.isInteger(limit)||limit<1||limit>60)return fail('Parâmetros de catálogo inválidos',400);
+   const key='/api/catalog?page='+page+'&limit='+limit+'&search='+encodeURIComponent(search);
+   return cacheResult(request,ctx,key,900,async()=>{
+    try{return respond(await listB3Catalog({search,page,limit}),200,900);}
+    catch(err){return fail(errorMessage(err),503);}
+   });
+  }
   if(path==='/api/dashboard')return cacheResult(request,ctx,'/api/dashboard?version=4',TTL_DASHBOARD,async()=>{
    const data=await buildDashboard(env);
    data.meta.refreshSeconds=data.errors.length?60:TTL_DASHBOARD;

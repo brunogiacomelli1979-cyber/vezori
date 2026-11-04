@@ -1,9 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import worker,{BR_SYMBOLS,buildDashboard,brazilQuote,brazilQuotes,historyQuote,cryptoQuotes} from '../src/worker.js';
+import worker,{BR_SYMBOLS,buildDashboard,brazilQuote,brazilQuotes,historyQuote,cryptoQuotes,listB3Catalog} from '../src/worker.js';
 function fakeFetch(url,options={}){
  const uri=new URL(url);let obj;
  if(uri.hostname==='brapi.dev'){
+  if(uri.pathname==='/api/quote/list'){
+   obj={stocks:[{stock:'HGLG11',name:'CSHG Logística',close:165.2,change:-0.5,type:'fund',subType:'fii'},
+    {stock:'BOVA11',name:'ETF Ibovespa',close:122,change:1.2,type:'fund',subType:'etf'}],
+    totalCount:1240,hasNextPage:true,currentPage:1};
+   return Promise.resolve(new Response(JSON.stringify(obj),{status:200,headers:{'content-type':'application/json'}}));
+  }
   const symbols=(uri.searchParams.get('symbols')||'').split(',');
   if(uri.pathname.includes('/historical'))obj={results:[{symbol:symbols[0],data:{historicalDataPrice:[{date:1793450000,close:25,adjustedClose:25.5},{date:1793536400,close:26,adjustedClose:26.5}]}}]};
   else obj={results:symbols.map(symbol=>({requestedSymbol:symbol,symbol,data:{shortName:'Empresa '+symbol,currency:'BRL',regularMarketPrice:40.25,regularMarketChangePercent:1.3,regularMarketTime:'2026-11-04T11:00:00Z'}}))};
@@ -118,4 +124,20 @@ test('falha da API pública CoinGecko remove preços cripto sem afetar ações e
  assert.equal(result.quotes.filter(q=>q.market==='BR').length,4);
  assert.equal(result.availability.coingecko,'partial_failure');
  assert.equal(result.errors.some(e=>e.source==='coingecko'),true);
+});
+
+test('listagem pública B3 aceita FIIs e ETFs e não inventa horário de preço',async()=>{
+ const list=await listB3Catalog({limit:10,page:1},fakeFetch);
+ assert.equal(list.mode,'real_market_catalog');
+ assert.equal(list.items.length,2);
+ assert.equal(list.items[0].symbol,'HGLG11');
+ assert.equal(list.items[0].category,'fii');
+ assert.equal(list.items[0].price,165.2);
+ assert.equal(list.items[0].providerAsOf,null);
+ assert.equal(list.hasNextPage,true);
+});
+test('catálogo rejeita consultas excessivas e parâmetros malformados',async()=>{
+ await assert.rejects(()=>listB3Catalog({limit:200},fakeFetch),/Paginação/);
+ await assert.rejects(()=>listB3Catalog({page:-2},fakeFetch),/Paginação/);
+ await assert.rejects(()=>listB3Catalog({search:'url&evil=true'},fakeFetch),/Busca inválida/);
 });
