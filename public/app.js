@@ -1,4 +1,5 @@
 import {ASSETS,KEY,STRATEGIES,validateTransaction,book,portfolio,portfolioXirr,project,parseBackup} from './finance.js';
+import {createApexDashboard} from './apex-ui.js';
 
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -8,6 +9,7 @@ const pct=n=>n==null?'—':`${n>0?'+':''}${number(n)}%`;
 const formatTime=t=>{if(!t)return 'Não informada';const d=new Date(t);return Number.isNaN(d.getTime())?String(t):d.toLocaleString('pt-BR');};
 const cssChange=n=>n>0?'positive':n<0?'negative':'flat';
 const state={data:null,transactions:[],active:'overview',filter:'all'};
+let apexUI=null;
 const save=()=>localStorage.setItem(KEY,JSON.stringify({version:3,brand:'VEZORI',savedAt:new Date().toISOString(),transactions:state.transactions}));
 function restore(){
  try{
@@ -90,6 +92,7 @@ function dashboardView(){
  $('hero-time').textContent=`Consulta: ${formatTime(d.generatedAt)}`;
  $('last-sync').textContent=`Última consulta ${formatTime(d.generatedAt)}`;
  if($('sidebar-source-status'))$('sidebar-source-status').textContent=`${d.quotes.length} ativos com preço disponível`;
+ apexUI?.render();
 }
 function providerView(){
  const catalog=[
@@ -119,6 +122,7 @@ function portfolioView(){
  $('portfolio-msg').textContent=p.complete?'Custo histórico de operações convertido pela taxa informada em cada transação. Preços de mercado vêm das fontes acima.':'Cobertura incompleta: não apresentamos o valor total ou a rentabilidade como se todas as posições estivessem precificadas.';
  $('portfolio-table').innerHTML=p.rows.length?p.rows.map(r=>`<tr><td><strong class="asset-main">${esc(r.symbol)}</strong><span class="asset-sub">${esc(ASSETS[r.symbol].name)}</span></td><td>${number(r.qty,8)}</td><td>${money(r.costBRL)}</td><td>${r.quoteAvailable?money(r.marketBRL):'<span class="muted">Sem cotação</span>'}</td></tr>`).join(''):'<tr><td colspan="4">Carteira vazia. Registre uma compra para começar.</td></tr>';
  overviewPortfolioPreview(p);
+ apexUI?.render();
  $('transactions-table').innerHTML=state.transactions.length?[...state.transactions].reverse().map(t=>{
   const side=t.side==='buy'?'Compra':t.side==='sell'?'Venda':'Provento';
   return `<tr><td>${esc(t.date)}</td><td>${side}</td><td>${esc(t.symbol)}</td><td>${t.side==='income'?'—':number(t.qty,8)}</td><td>${money(t.unitPrice,ASSETS[t.symbol].currency)}</td><td><button class="delete-button" data-delete="${esc(t.id)}" aria-label="Excluir operação">Excluir</button></td></tr>`;
@@ -236,6 +240,7 @@ async function history(e){
 }
 function init(){
  state.transactions=restore();$('tx-date').value=new Date().toLocaleDateString('en-CA');
+ apexUI=createApexDashboard({state,save,portfolioView,navigate});apexUI.mount();
  document.querySelectorAll('[data-view]').forEach(x=>x.addEventListener('click',()=>navigate(x.dataset.view)));
  document.querySelectorAll('[data-go]').forEach(x=>x.addEventListener('click',()=>navigate(x.dataset.go)));
  $('overview-strategies').addEventListener('click',event=>{if(event.target.closest('[data-strategy]'))navigate('strategies');});

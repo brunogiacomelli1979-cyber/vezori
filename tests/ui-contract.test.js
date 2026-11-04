@@ -40,11 +40,10 @@ test('sem cartela ficticia, sem dados de mercado fixos no HTML e com layout resp
  assert.match(css,/\.topbar/);
 });
 
-test('visão de mercado com hierarquia editorial em lugar de banner publicitário',()=>{
- assert.match(html,/class="overview-intro"/);
- assert.match(html,/Panorama de investimentos/);
- assert.doesNotMatch(html,/class="hero"/);
- assert.match(css,/VEZORI \/ Product interface 1\.2/);
- assert.match(css,/--bg:#f4f6f7/);
- assert.match(app,/symbols=\['01','02','03'\]/);
+test('layout Apex integrado com dados reais e módulos anteriores',()=>{
+ assert.match(html,/class="view active apex-dashboard"/);
+ assert.match(html,/Visão consolidada/);
+ assert.match(html,/apex\.css/);
+ assert.match(app,/createApexDashboard\(\{state,save,portfolioView,navigate\}\)/);
+ assert.match(app,/apexUI\?\.render\(\)/);
 });

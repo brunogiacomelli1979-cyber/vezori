@@ -3,11 +3,16 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <meta name="theme-color" content="#f4f6f7" />
+  <meta name="theme-color" content="#0B0F19" />
   <meta name="description" content="Plataforma independente de inteligência de investimentos com cotações reais e laboratório de estratégias." />
   <title>VEZORI | Plataforma de Inteligência de Investimentos</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="/styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/apex.css?v=13" />
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
   <script type="module" src="/app.js"></script>
 </head>
 <body>
@@ -27,7 +32,7 @@
         <button class="nav" data-view="about" type="button"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M17.5 13.5v8m-4-4h8"/></svg> Integrações</button>
       </nav>
       <div class="sidebar-bottom"><span class="sidebar-dot" aria-hidden="true"></span><div><strong>Fontes de mercado</strong><br/><small id="sidebar-source-status">Aguardando atualização</small></div></div>
-      <div class="sidebar-footnote"><span class="footnote-glyph" aria-hidden="true">V.</span><span>VEZORI <small>PLATAFORMA DE PESQUISA</small></span><span class="footnote-version">v1.2</span></div>
+      <div class="sidebar-footnote"><span class="footnote-glyph" aria-hidden="true">V.</span><span>VEZORI <small>PLATAFORMA DE PESQUISA</small></span><span class="footnote-version">v1.3</span></div>
     </aside>
     <div class="main-frame">
       <header class="topbar">
@@ -39,27 +44,53 @@
         <span class="live-pill" id="api-status" role="status"><span class="dot pulse"></span> Conectando às fontes...</span>
       </header>
       <main id="page-content" class="content">
-        <section id="view-overview" class="view active">
-          <div class="overview-intro">
-            <div>
-              <span class="intro-kicker">Mercado · Visão consolidada</span>
-              <h1>Panorama de investimentos</h1>
-              <p>Indicadores de referência, acompanhamento de ativos e ferramentas de análise em um único ambiente.</p>
-            </div>
-            <div class="overview-meta" aria-live="polite">
-              <div class="count-line"><strong id="hero-count">—</strong><span>ativos com cotação<br/>disponível</span></div>
-              <div id="hero-time">Atualização pendente</div>
-            </div>
+        <section id="view-overview" class="view active apex-dashboard" aria-label="Painel da carteira">
+          <div class="apex-welcome">
+            <div><p class="apex-overline">PAINEL FINANCEIRO / VEZORI</p><h1>Visão consolidada</h1><p>Acompanhe suas posições registradas e os indicadores disponíveis nas fontes de mercado.</p></div>
+            <div class="apex-welcome-actions"><button class="button primary" id="apex-new-asset" type="button">＋ Nova operação</button><div class="apex-data-fresh"><span class="apex-signal"></span><span id="hero-count">—</span> ativos disponíveis <span id="hero-time">Aguardando dados</span></div></div>
           </div>
-          <div class="section-heading"><div><h2>Indicadores de mercado</h2></div><span class="muted small-text">Valores de referência · consulte fonte e data</span></div>
-          <div id="overview-kpis" class="kpi-grid" aria-live="polite"><article class="metric-card"><div class="metric-title">DÓLAR DE REFERÊNCIA</div><div class="metric-value skeleton">—</div></article><article class="metric-card"><div class="metric-title">EURO DE REFERÊNCIA</div><div class="metric-value skeleton">—</div></article><article class="metric-card"><div class="metric-title">META SELIC</div><div class="metric-value skeleton">—</div></article><article class="metric-card"><div class="metric-title">BITCOIN / BRL</div><div class="metric-value skeleton">—</div></article></div>
-          <div class="dashboard-grid">
-            <article class="panel market-summary"><div class="panel-head"><div><h3>Ativos brasileiros</h3><p>Preços e movimentos recentes da B3</p></div><button class="text-link" data-go="market" type="button">Ver todos <span aria-hidden="true">↗</span></button></div><div class="table-wrap"><table><thead><tr><th>ATIVO</th><th>PREÇO</th><th>VARIAÇÃO</th></tr></thead><tbody id="overview-stocks"><tr><td colspan="3">Consultando a brapi...</td></tr></tbody></table></div><div class="panel-foot">Preços sujeitos a atraso <span>Fonte: brapi</span></div></article>
-            <article class="panel strategy-summary"><div class="panel-head"><div><h3>Laboratório de estratégias</h3><p>Modelos para estudar alocação e risco</p></div><button class="text-link" data-go="strategies" type="button">Explorar <span aria-hidden="true">↗</span></button></div><div id="overview-strategies" class="strategy-preview-list"></div><p class="micro-note">Modelos didáticos, não carteiras oficiais ou recomendações de investimento.</p></article>
-            <article class="panel portfolio-summary-panel"><div class="panel-head"><div><h3>Minha carteira</h3><p>Posições e composição patrimonial</p></div><button class="text-link" data-go="portfolio" type="button">Detalhes <span aria-hidden="true">↗</span></button></div><div id="overview-portfolio" class="portfolio-preview"><div class="empty-preview">Nenhuma operação cadastrada ainda.</div></div><div class="panel-foot">Dados armazenados neste navegador</div></article>
+          <div class="apex-metrics" aria-label="Resumo patrimonial">
+            <article class="apex-metric"><div class="apex-metric-top"><span>Patrimônio precificado</span><span class="apex-metric-symbol" aria-hidden="true">◈</span></div><strong id="apex-total">—</strong><p id="apex-total-note">Registre uma operação para começar</p></article>
+            <article class="apex-metric"><div class="apex-metric-top"><span>Resultado não realizado</span><span class="apex-metric-symbol" aria-hidden="true">↗</span></div><strong id="apex-pnl">—</strong><p id="apex-pnl-note">Depende de cotações válidas</p></article>
+            <article class="apex-metric"><div class="apex-metric-top"><span>Proventos registrados</span><span class="apex-metric-symbol amber" aria-hidden="true">◉</span></div><strong id="apex-income">—</strong><p>Recebidos lançados manualmente</p></article>
+            <article class="apex-metric"><div class="apex-metric-top"><span>Concentração por posição</span><span class="apex-metric-symbol" aria-hidden="true">⊙</span></div><strong id="apex-concentration">—</strong><div class="apex-risk-track"><div id="apex-risk-fill"></div></div><p id="apex-concentration-note">Não equivale ao perfil de risco pessoal</p></article>
           </div>
-          <article class="panel dashboard-simulation"><div class="simulation-copy"><div class="eyebrow">SIMULAÇÃO · CENÁRIO HIPOTÉTICO</div><h3>Juros compostos & aportes</h3><p>Explore como aportes recorrentes podem evoluir em diferentes cenários hipotéticos de rentabilidade.</p><button class="button primary" data-go="strategies" type="button">Abrir simulador <span aria-hidden="true">↗</span></button></div><div id="overview-sim-chart" class="dashboard-sim-chart" role="img" aria-label="Projeção matemática hipotética de 10 anos"></div><div id="overview-sim-metrics" class="dashboard-sim-metrics"></div></article>
-          <div id="notice" class="notice" role="status"><span aria-hidden="true">ⓘ</span><span>As cotações são solicitadas aos provedores. Preços indisponíveis não são preenchidos com valores fictícios. Projeções matemáticas não equivalem a resultados de mercado.</span></div>
+          <div class="apex-main-charts">
+            <article class="apex-panel apex-evolution">
+              <div class="apex-panel-head"><div><h2>Histórico de aportes</h2><p>Compras registradas acumuladas, convertidas pelo câmbio informado nas operações. Não é evolução patrimonial.</p></div>
+                <div class="apex-timeframe" id="apex-timeframe" aria-label="Período do histórico"><button data-period="1M" type="button">1M</button><button data-period="6M" type="button">6M</button><button data-period="1A" type="button">1A</button><button data-period="YTD" type="button">YTD</button><button data-period="ALL" class="selected" type="button">TUDO</button></div>
+              </div>
+              <div class="apex-chart-area"><canvas id="apex-evolution-chart" role="img" aria-label="Histórico dos aportes efetuados"></canvas><div id="apex-evolution-empty" class="apex-figure-empty">Sem operações suficientes para apresentar o histórico de aportes.</div></div>
+              <div class="apex-chart-caption"><div><span>Aportes brutos registrados</span><strong id="apex-gross">—</strong></div><div><span>Posições com cotação</span><strong id="apex-coverage">—</strong></div><div><span>Rentabilidade histórica</span><strong>Não disponível</strong></div></div>
+            </article>
+            <article class="apex-panel apex-allocation"><div class="apex-panel-head"><div><h2>Distribuição de ativos</h2><p>Alocação calculada pelas posições precificadas</p></div></div>
+              <div class="apex-alloc-body"><div class="apex-alloc-chart-wrap"><canvas id="apex-allocation-chart" role="img" aria-label="Distribuição da carteira por mercado"></canvas><div id="apex-alloc-empty" class="apex-figure-empty">Sem posições precificadas</div></div><div id="apex-alloc-legend" class="apex-alloc-legend"></div></div>
+              <p class="apex-disclaimer" id="apex-allocation-footnote">Valores exibidos apenas com cobertura completa.</p>
+            </article>
+          </div>
+          <article class="apex-panel apex-assets">
+            <div class="apex-panel-head apex-assets-head"><div><h2>Ativos da carteira</h2><p>Custo, preço atual e resultado de cada posição</p></div><div class="apex-assets-tools"><label class="apex-asset-search"><span aria-hidden="true">⌕</span><input id="apex-asset-search" type="search" placeholder="Buscar ativo" autocomplete="off" aria-label="Buscar posição na carteira" /></label><select id="apex-asset-filter" aria-label="Filtrar classe"><option value="all">Todas as classes</option><option value="BR">Ações Brasil</option><option value="US">Internacional</option><option value="CRYPTO">Criptomoedas</option></select><button id="apex-asset-sort" class="apex-sort-btn" type="button">Ordenar: Ativo ↓</button></div></div>
+            <div class="table-wrap"><table class="apex-portfolio-table"><thead><tr><th>ATIVO</th><th>CLASSE</th><th>QUANTIDADE</th><th>CUSTO MÉDIO (R$)</th><th>PREÇO ATUAL</th><th>RESULTADO</th><th>VALOR EM R$</th><th>AÇÕES</th></tr></thead><tbody id="apex-assets-body"><tr><td colspan="8" class="apex-empty-cell">Nenhuma posição cadastrada. Use “Nova operação” para começar.</td></tr></tbody></table></div><div class="apex-panel-foot"><span>Preços podem ter atraso; resultados não incluem tributos não lançados.</span><button class="apex-link" type="button" data-go="portfolio">Abrir carteira completa →</button></div>
+          </article>
+          <div class="apex-bottom-grid">
+            <article class="apex-panel"><div class="apex-panel-head"><div><h2>Movimentações recentes</h2><p>Últimos registros deste navegador</p></div><button class="apex-link" type="button" data-go="portfolio">Ver histórico →</button></div><div id="apex-recent" class="apex-feed"><p class="apex-empty-message">Nenhuma operação lançada.</p></div></article>
+            <article class="apex-panel"><div class="apex-panel-head"><div><h2>Proventos</h2><p>Somente eventos informados na carteira</p></div></div><div id="apex-income-events" class="apex-feed"><p class="apex-empty-message">Nenhum provento registrado.</p></div><p class="apex-disclaimer">Calendário futuro ainda não integrado a um fornecedor de eventos corporativos.</p></article>
+            <article class="apex-panel apex-market-strip"><div class="apex-panel-head"><div><h2>Referências de mercado</h2><p>Dados reais, com data e fonte</p></div><button class="apex-link" type="button" data-go="market">Mercado →</button></div><div id="overview-kpis" class="apex-reference-list"></div></article>
+          </div>
+          <div class="apex-secondary">
+            <article class="apex-panel market-summary"><div class="apex-panel-head"><div><h2>Ativos brasileiros</h2><p>Cotações recebidas da brapi</p></div><button class="apex-link" type="button" data-go="market">Ver cotações →</button></div><div class="table-wrap"><table><thead><tr><th>ATIVO</th><th>PREÇO</th><th>VARIAÇÃO</th></tr></thead><tbody id="overview-stocks"><tr><td colspan="3">Consultando cotações...</td></tr></tbody></table></div></article>
+            <article class="apex-panel"><div class="apex-panel-head"><div><h2>Estratégias para estudo</h2><p>Modelos didáticos de alocação</p></div><button class="apex-link" type="button" data-go="strategies">Laboratório →</button></div><div id="overview-strategies" class="strategy-preview-list"></div></article>
+            <article class="apex-panel apex-project"><div class="apex-panel-head"><div><h2>Simulador de aportes</h2><p>Cenário matemático, não previsão de mercado</p></div><button class="apex-link" type="button" data-go="strategies">Simular →</button></div><div id="overview-sim-chart" class="dashboard-sim-chart"></div><div id="overview-sim-metrics" class="dashboard-sim-metrics"></div></article>
+          </div>
+          <div id="overview-portfolio" class="apex-legacy-preview" hidden></div>
+          <div id="notice" class="notice" role="status"><span aria-hidden="true">ⓘ</span><span>As informações da carteira vêm exclusivamente de operações locais e das APIs disponíveis. O protótipo original continha valores e movimentos simulados: nenhum deles é usado aqui.</span></div>
+          <dialog id="apex-trade-modal" class="apex-trade-modal" aria-labelledby="apex-dialog-title"><form id="apex-trade-form" class="apex-trade-form" novalidate>
+            <div class="apex-modal-head"><div><span class="apex-overline">MINHA CARTEIRA</span><h2 id="apex-dialog-title">Registrar operação</h2></div><button type="button" id="apex-trade-close" class="apex-icon-button" aria-label="Fechar">×</button></div>
+            <p class="apex-modal-caption">O lançamento fica somente neste navegador e utiliza as mesmas validações da carteira.</p>
+            <div class="apex-form-grid"><label>Ativo<select id="apex-trade-symbol" required></select></label><label>Tipo de registro<select id="apex-trade-side"><option value="buy">Compra</option><option value="sell">Venda</option><option value="income">Provento</option></select></label><label id="apex-trade-qty-wrap">Quantidade<input id="apex-trade-qty" type="number" min="0.00000001" step="any" required /></label><label><span id="apex-trade-price-label">Preço unitário</span><input id="apex-trade-price" type="number" min="0.00000001" step="any" required /></label><label>Data<input id="apex-trade-date" type="date" required /></label><label>Câmbio histórico (R$/moeda)<input id="apex-trade-fx" type="number" min="0.000001" value="1" step="any" required /></label><label>Taxas na moeda do ativo<input id="apex-trade-fee" type="number" min="0" step="any" value="0" /></label></div>
+            <p class="apex-modal-caption" id="apex-trade-hint">O preço deve refletir sua operação real, não a cotação atual.</p><p class="apex-modal-error" id="apex-trade-error" role="alert"></p>
+            <div class="apex-modal-actions"><button type="button" id="apex-trade-cancel" class="button outline">Cancelar</button><button type="submit" class="button primary">Salvar operação</button></div>
+          </form></dialog>
         </section>
         <section id="view-market" class="view">
           <div class="page-title"><div class="eyebrow">COTAÇÕES E ATIVOS</div><h1>Radar de mercado</h1><p>Preços reais disponíveis por API, separados por provedor, moeda e data de referência.</p></div>
@@ -93,7 +124,7 @@
           <div class="panel section-gap"><h3>Política de dados e privacidade</h3><p>Os ativos, transações e custos lançados em Minha Carteira ficam somente no armazenamento local deste navegador. Não existe sincronização entre dispositivos, login ou conexão com contas da Picnic e do Nubank nesta versão. O site não calcula impostos ou rentabilidade líquida tributária automaticamente. Não coloque senhas, tokens, dados bancários ou documentos pessoais nos lançamentos.</p><p>As cotações podem ser de fechamento, com atraso, ou sujeitas à licença de redistribuição. Cada fonte tem condições de uso próprias. A VEZORI é uma plataforma de pesquisa e educação financeira. Não executa ordens nem recomenda investimentos individualizados.</p></div>
         </section>
       </main>
-      <footer class="footer"><span>VEZORI <b>·</b> v1.2</span><span>Preços e indicadores sujeitos às condições dos provedores.</span><span id="last-sync">Aguardando atualização</span></footer>
+      <footer class="footer"><span>VEZORI <b>·</b> v1.3</span><span>Preços e indicadores sujeitos às condições dos provedores.</span><span id="last-sync">Aguardando atualização</span></footer>
     </div>
   </div>
 </body>
