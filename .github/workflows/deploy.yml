@@ -1,0 +1,45 @@
+name: VEZORI - Testar e publicar no Cloudflare
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CF_TOKEN_CONFIGURED: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+      CF_ACCOUNT_CONFIGURED: ${{ secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+
+    steps:
+      - name: Baixar o codigo do repositorio
+        uses: actions/checkout@v4
+
+      - name: Instalar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Instalar dependencias
+        run: npm install --no-audit --no-fund
+
+      - name: Verificar sintaxe e executar testes
+        run: npm run check
+
+      - name: Avisar quando o Cloudflare nao estiver configurado
+        if: ${{ env.CF_TOKEN_CONFIGURED != 'true' || env.CF_ACCOUNT_CONFIGURED != 'true' }}
+        run: |
+          echo "::warning::Deploy nao executado. Cadastre CLOUDFLARE_API_TOKEN e CLOUDFLARE_ACCOUNT_ID em Settings > Secrets and variables > Actions e rode este workflow novamente."
+
+      - name: Publicar VEZORI via Wrangler
+        if: ${{ env.CF_TOKEN_CONFIGURED == 'true' && env.CF_ACCOUNT_CONFIGURED == 'true' }}
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy
