@@ -24,3 +24,5 @@
 - O usuário consegue navegar do card de estratégia ao construtor, substituir ativos e gerar um gráfico com valores nominais e contribuições.
 - Persistência separada da carteira real, com validação do rascunho local.
 - Layout responsivo; inputs e botões com labels; detalhes das limitações visíveis.
+## Ampliação da escolha
+As alternativas incluem ETFs reais BND, SGOV, GLD e DBC como instrumentos para estudo. Os provedores atuais podem não fornecer suas cotações; a simulação depende apenas das taxas escolhidas pelo usuário. Ao adicionar um ativo, a interface redistribui inicialmente até 10 pontos percentuais a partir da maior posição para manter 100%; a retirada devolve seu peso à maior posição restante. Os pesos continuam editáveis.

@@ -11,20 +11,24 @@ export const LAB_BUCKETS=Object.freeze({
   CAIXA_SIM:{name:'Liquidez / caixa · classe hipotética',currency:'BRL',market:'SIM',assetClass:'cash',hypothetical:true}
 });
 export const LAB_EXTRA=Object.freeze({
-  BOVA11:{name:'BOVA11 · ETF de referência Ibovespa',currency:'BRL',market:'BR',assetClass:'etf',hypothetical:false}
+  BOVA11:{name:'ETF de referência Ibovespa',currency:'BRL',market:'BR',assetClass:'etf',hypothetical:false},
+  BND:{name:'Vanguard Total Bond Market ETF',currency:'USD',market:'US',assetClass:'fixed',hypothetical:false},
+  SGOV:{name:'iShares 0-3 Month Treasury Bond ETF',currency:'USD',market:'US',assetClass:'fixed',hypothetical:false},
+  GLD:{name:'SPDR Gold Shares',currency:'USD',market:'US',assetClass:'gold',hypothetical:false},
+  DBC:{name:'Invesco DB Commodity Index Tracking Fund',currency:'USD',market:'US',assetClass:'commodities',hypothetical:false}
 });
 /** Study templates are independently authored examples; they are NOT the named investors' holdings. */
 export const LAB_PRESETS=Object.freeze([
  {id:'indexacao',description:'Diversificação por índices amplos e parcela de renda fixa. VOO e BOVA11 são exemplos de ETFs, sujeitos a preço/cobertura do fornecedor.',
-  picks:[['VOO',50],['BOVA11',20],['RF_SIM',30]],alternatives:['QQQ','ITUB4','VALE3'],warning:'Os 30% de renda fixa são uma classe conceitual, não um título específico.'},
+  picks:[['VOO',50],['BOVA11',20],['RF_SIM',30]],alternatives:['BND','QQQ','ITUB4'],warning:'Os 30% de renda fixa são uma classe conceitual, não um título específico.'},
  {id:'qualidade',description:'Conjunto de empresas para estudar qualidade e valuation. Não foram verificados ROE, margem, vantagem competitiva ou preço justo destas ações.',
   picks:[['ITUB4',25],['AAPL',25],['VALE3',15],['PETR4',15],['CAIXA_SIM',20]],alternatives:['MGLU3','BOVA11','VOO'],warning:'Os tickers são candidatos didáticos, não uma classificação comprovada de qualidade ou valor.'},
  {id:'allweather',description:'Composição educacional por classes econômicas; não é a carteira da Bridgewater nem reproduz o All Weather original.',
-  picks:[['VOO',20],['BOVA11',10],['RF_SIM',55],['OURO_SIM',7.5],['COM_SIM',7.5]],alternatives:['ITUB4','VALE3'],warning:'Renda fixa, ouro e commodities são classes hipotéticas até serem substituídas por instrumentos identificados.'},
+  picks:[['VOO',20],['BOVA11',10],['RF_SIM',55],['OURO_SIM',7.5],['COM_SIM',7.5]],alternatives:['BND','GLD','DBC'],warning:'Renda fixa, ouro e commodities são classes hipotéticas até serem substituídas por instrumentos identificados.'},
  {id:'value',description:'Universo inicial de empresas para aplicação futura de filtros fundamentalistas, diversificado com renda fixa conceitual.',
-  picks:[['ITUB4',25],['VALE3',20],['PETR4',20],['RF_SIM',35]],alternatives:['AAPL','MGLU3','BOVA11'],warning:'Não há cálculo atual de margem de segurança, P/L ou ROE; nenhum papel foi classificado como barato.'},
+  picks:[['ITUB4',25],['VALE3',20],['PETR4',20],['RF_SIM',35]],alternatives:['AAPL','SGOV','BOVA11'],warning:'Não há cálculo atual de margem de segurança, P/L ou ROE; nenhum papel foi classificado como barato.'},
  {id:'multiclasse',description:'Exemplo multiclasse com ETFs, títulos, ouro e pequena participação em cripto. Volatilidade não é modelada nesta projeção.',
-  picks:[['VOO',20],['BOVA11',20],['RF_SIM',45],['OURO_SIM',10],['BTC',3],['ETH',2]],alternatives:['QQQ','SOL','ITUB4'],warning:'Cripto pode apresentar perdas elevadas; retornos hipotéticos constantes não reproduzem esse risco.'}
+  picks:[['VOO',20],['BOVA11',20],['RF_SIM',45],['OURO_SIM',10],['BTC',3],['ETH',2]],alternatives:['GLD','BND','SOL'],warning:'Cripto pode apresentar perdas elevadas; retornos hipotéticos constantes não reproduzem esse risco.'}
 ]);
 
 const money=(n,ccy='BRL')=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:ccy,maximumFractionDigits:2}).format(n);
@@ -79,7 +83,7 @@ export function simulateStudy(rows,params){
 }
 /** Educational arbitrary rate set, only applied after an explicit user click. */
 export function demoAnnualRate(symbol,metadata=assetMeta(symbol)){
- if(metadata?.hypothetical){return {fixed:5,gold:4,commodities:3,cash:0}[metadata.assetClass]??0;}
+ if(metadata?.assetClass&&['fixed','gold','commodities','cash'].includes(metadata.assetClass))return {fixed:5,gold:4,commodities:3,cash:0}[metadata.assetClass];
  if(['BTC','ETH','SOL'].includes(symbol))return 12;
  if(symbol==='VOO'||symbol==='QQQ'||symbol==='BOVA11')return 7;
  return 8;
@@ -175,8 +179,17 @@ export function createLabBuilder({state}){
   if(!liveMeta(symbol)){setError('Ativo não encontrado no catálogo disponível.');return;}
   if(holdings.some(x=>x.symbol===symbol)){setError('O ativo já está na simulação. Ajuste o peso na linha existente.');return;}
   if(holdings.length>=15){setError('A simulação comporta até 15 ativos ou classes.');return;}
-  holdings.push({symbol,weight:0,rate:0});
+  // Transfere automaticamente parte do maior peso para a posição incluída.
+  let moved=100,from=null;
+  if(holdings.length){
+   const largest=holdings.reduce((best,row)=>row.weight>best.weight?row:best,holdings[0]);
+   moved=Math.min(10,Math.floor(largest.weight/2*2)/2);
+   if(moved<=0){setError('Ajuste os pesos atuais antes de incluir mais ativos.');return;}
+   from=largest.symbol;largest.weight=Math.round((largest.weight-moved)*1000)/1000;
+  }
+  holdings.push({symbol,weight:moved,rate:0});
   setError('');save();renderSuggestions();clearResult();
+  $('lab-message').textContent=from?`${symbol} adicionado com ${fmt(moved)}% transferidos de ${from}. Confira e ajuste os pesos.`:`${symbol} adicionado com 100% da carteira. Você pode dividir o peso entre outros ativos.`;
  }
  function setError(message){$('lab-error').textContent=message||'';}
  function renderProjection(result){
@@ -221,7 +234,12 @@ export function createLabBuilder({state}){
   $('lab-rows').addEventListener('change',()=>{save();renderHoldings();});
   $('lab-rows').addEventListener('click',e=>{
    const b=e.target.closest('[data-lab-remove]');if(!b)return;
-   holdings.splice(Number(b.dataset.labRemove),1);save();renderSuggestions();clearResult();
+   const removed=holdings.splice(Number(b.dataset.labRemove),1)[0];
+   if(removed&&holdings.length){
+    const largest=holdings.reduce((best,row)=>row.weight>best.weight?row:best,holdings[0]);
+    largest.weight=Math.round((largest.weight+removed.weight)*1000)/1000;
+   }
+   save();renderSuggestions();clearResult();
   });
   for(const [id,key] of [['lab-initial','initial'],['lab-monthly','monthly'],['lab-years','years']]){
    $(id).addEventListener('input',e=>{params[key]=e.target.value===''?NaN:Number(e.target.value);save();clearResult();});

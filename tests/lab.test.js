@@ -79,3 +79,10 @@ test('componentes da etapa do laboratório preservam transparência',()=>{
  assert.match(module,/não determinam o resultado matemático/);
  assert.match(css,/lab-studio-grid/);
 });
+test('ETFs reais opcionais e classes genéricas são diferenciados',()=>{
+ for(const s of ['BND','SGOV','GLD','DBC'])assert.equal(LAB_EXTRA[s].hypothetical,false);
+ assert.equal(LAB_BUCKETS.RF_SIM.hypothetical,true);
+ assert.equal(demoAnnualRate('BND',LAB_EXTRA.BND),5);
+ assert.equal(demoAnnualRate('GLD',LAB_EXTRA.GLD),4);
+ assert.ok(LAB_PRESETS[2].alternatives.includes('GLD'));
+});
