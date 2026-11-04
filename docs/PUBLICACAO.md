@@ -2,24 +2,14 @@
 
 **Importante:** GitHub hospeda o repositório, mas **não** executa o backend de APIs do site. Para um produto dinâmico, usamos Cloudflare Workers. Não confundir GitHub Pages com backend. Todas as operações abaixo partem de um **novo** repositório exclusivo.
 
-## 1. Criar repositório novo
+## 1. GitHub: concluído
 
-- https://github.com/new?owner=brunogiacomelli1979-cyber&name=vezori
-- Nome: **vezori**; visibilidade Public ou Private conforme estratégia e termos dos dados de mercado.
-- Crie vazio, preferencialmente sem README inicial para permitir o primeiro push sem conflito.
+O repositório exclusivo foi criado e recebeu os arquivos da v1.0:
 
-Se já tiver git autenticado no computador, extraia o ZIP e execute **na pasta raiz**:
-
-```bash
-git init
-git add .
-git commit -m "feat: VEZORI v1.0 com APIs reais e carteira auditável"
-git branch -M main
-git remote add origin https://github.com/brunogiacomelli1979-cyber/vezori.git
-git push -u origin main
-```
-
-Alternativamente, após criar o novo repositório, use o conector GitHub do ChatGPT para enviar os arquivos preparados.
+- https://github.com/brunogiacomelli1979-cyber/vezori
+- Branch: `main`
+- Backend: `src/worker.js`; interface: `public/`; testes: `tests/`
+- Não envie ZIP para o GitHub; todos os arquivos já estão presentes.
 
 ## 2. Deploy no Cloudflare Workers Free
 
