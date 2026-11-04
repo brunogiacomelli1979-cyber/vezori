@@ -2,7 +2,7 @@
 
 Plataforma independente de inteligência de investimentos com **consultas reais a APIs financeiras**, motor de carteira multimoeda, desempenho ponderado por fluxos e estudo de estratégias. Código preparado para novo repositório GitHub dedicado (`vezori`) e publicação com **Cloudflare Workers**, sem Railway e sem obrigatoriedade de servidores pagos.
 
-> **Status:** v1.0 do MVP implementada e com testes automatizados. **Não está publicada nem conectada a credenciais pessoais.** Integrações externas foram verificadas contra documentação e endpoints públicos; testes automatizados usam respostas controladas para garantir cálculos e contratos. Teste ao vivo no endereço final ainda depende de implantação e configuração das chaves.
+> **Status:** v1.0 publicada no repositório GitHub `brunogiacomelli1979-cyber/vezori` em 04/11/2026, com 21 testes locais aprovados. **Ainda não foi implantada no Cloudflare nem conectada a credenciais pessoais.** Integrações externas foram verificadas contra documentação e endpoints públicos; testes automatizados usam respostas controladas para garantir cálculos e contratos. Teste ao vivo no endereço final ainda depende de implantação e configuração das chaves.
 
 ## Recursos já implementados
 
@@ -59,16 +59,16 @@ Para testar os cálculos e o roteamento sem gastar requisições financeiras:
 npm test
 ```
 
-## Publicação em novo repositório GitHub
+## Repositório criado — próxima etapa: Cloudflare Workers
 
-1. Crie `https://github.com/brunogiacomelli1979-cyber/vezori` como repositório **novo** (não use ou altere seus demais projetos).
-2. Envie o conteúdo **desta pasta** para a raiz do repositório.
-3. Acesse Cloudflare, crie um Worker com integração ao novo repositório GitHub e comando `npx wrangler deploy` (ou autentique Wrangler e execute `npm run deploy`).
-4. Cadastre as chaves opcionais no Cloudflare Worker em **Settings → Variables and Secrets**:
-   - `BRAPI_API_KEY` (brapi)
-   - `COINGECKO_API_KEY` (CoinGecko Demo)
-   - `TWELVEDATA_API_KEY` (Twelve Data Basic)
-5. Abra o endereço `*.workers.dev` informado pelo Cloudflare e verifique `/api/health` e `/api/dashboard`.
+- Repositório: https://github.com/brunogiacomelli1979-cyber/vezori
+- Branch de produção: `main`
+- Código enviado: frontend, backend, testes e documentação.
+- **Ainda não há URL pública operacional do aplicativo.**
+
+Para publicar, no painel https://dash.cloudflare.com/ abra **Workers & Pages → Create application → GitHub**, autorize o repositório `brunogiacomelli1979-cyber/vezori`, mantenha o diretório raiz e o nome de Worker `vezori` (igual ao `wrangler.jsonc`), selecione `main` e configure o comando de deploy `npx wrangler deploy`. Em seguida, confira `/api/health` e `/api/dashboard`.
+
+As chaves opcionais `BRAPI_API_KEY`, `COINGECKO_API_KEY` e `TWELVEDATA_API_KEY` devem ser inseridas somente em **Worker → Settings → Variables and Secrets**, como *Secrets*.
 
 Mais detalhes em [docs/PUBLICACAO.md](docs/PUBLICACAO.md) e [docs/ARQUITETURA.md](docs/ARQUITETURA.md).
 
