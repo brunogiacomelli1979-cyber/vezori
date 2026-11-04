@@ -49,3 +49,13 @@ test('home com jornada de seleção direta, sem ficha solta no menu',()=>{
  assert.match(app,/createMarketHome/);
  assert.match(css,/home-asset-row/);
 });
+
+test('catálogo remoto amplia a cobertura de B3 sem criar cotação faltante',()=>{
+ const rows=homeCatalog({quotes:[{symbol:'PETR4',currency:'BRL',price:22,changePct:1}],
+ catalog:[{symbol:'HGLG11',name:'Fundo logístico',market:'BR',currency:'BRL',category:'fii',price:151.32,changePct:2,provider:'brapi'},
+ {symbol:'BOVA11',name:'ETF Ibovespa',market:'BR',currency:'BRL',category:'etf',price:null,provider:'brapi'}]});
+ assert.equal(rows.length,12);
+ assert.equal(rows.find(r=>r.symbol==='HGLG11').quote.price,151.32);
+ assert.equal(rows.find(r=>r.symbol==='BOVA11').quote,null);
+ assert.equal(rows.find(r=>r.symbol==='PETR4').quote.price,22);
+});

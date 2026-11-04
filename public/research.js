@@ -42,8 +42,14 @@ export function summarizeHistory(series){
 /** Market universe is intentionally fixed to assets supported by validated endpoints. */
 export function explorationRows(data={},opts={}){
  const {search='',market='all',sort='symbol'}=opts;
- const quotes=new Map((data.quotes||[]).filter(q=>marketOf(q.symbol)&&Number.isFinite(q.price)&&q.price>0).map(q=>[q.symbol,q]));
- let rows=Object.entries(ASSETS).map(([symbol,meta])=>({symbol,...meta,quote:quotes.get(symbol)||null}));
+ const quotes=new Map((data.quotes||[]).filter(q=>Number.isFinite(q?.price)&&q.price>0).map(q=>[q.symbol,q]));
+ const entries=new Map(Object.entries(ASSETS));
+ for(const record of data.catalog||[]){
+  if(!record||!/^[A-Z0-9]{3,12}$/.test(record.symbol)||record.market!=='BR')continue;
+  if(!entries.has(record.symbol))entries.set(record.symbol,{name:record.name,market:'BR',currency:'BRL'});
+  if(!quotes.has(record.symbol)&&Number.isFinite(record.price)&&record.price>0)quotes.set(record.symbol,{...record});
+ }
+ let rows=[...entries].map(([symbol,meta])=>({symbol,...meta,quote:quotes.get(symbol)||null}));
  const match=String(search).trim().toLocaleLowerCase('pt-BR');
  rows=rows.filter(row=>(market==='all'||market===row.market)&&(!match||`${row.symbol} ${row.name}`.toLocaleLowerCase('pt-BR').includes(match)));
  const collate=(a,b)=>a.symbol.localeCompare(b.symbol);
@@ -59,17 +65,19 @@ export function createResearchTools({state,navigate,getJson}){
  const members=new Set();
  const historyCache=new Map();
  let detailChart=null,comparisonChart=null,detailRequest=0,compareRequest=0;
- const supported=s=>Object.hasOwn(ASSETS,s);
- const quote=s=>(state.data?.quotes||[]).find(q=>q.symbol===s)||null;
+ const catalog=new Map();
+ const metaOf=s=>ASSETS[s]||catalog.get(s)?.meta;
+ const supported=s=>!!metaOf(s);
+ const quote=s=>(state.data?.quotes||[]).find(q=>q.symbol===s)||catalog.get(s)?.quote||null;
  const historyKey=(symbol,range)=>`${symbol}:${range}`;
  const fetchHistory=async(symbol,range)=>{
   if(!supported(symbol))throw Error('Ativo não suportado');
   if(!['1mo','3mo'].includes(range))throw Error('Período inválido');
   const key=historyKey(symbol,range),cached=historyCache.get(key);
   if(cached&&Date.now()-cached.time<600000)return cached.promise;
-  const promise=getJson(`/api/history?market=${marketOf(symbol)}&symbol=${encodeURIComponent(symbol)}&range=${range}`)
+  const promise=getJson(`/api/history?market=${metaOf(symbol).market}&symbol=${encodeURIComponent(symbol)}&range=${range}`)
     .then(data=>{
-      if(data.symbol!==symbol||data.market!==marketOf(symbol)||!Array.isArray(data.points))throw Error('Contrato de série histórica inconsistente');
+      if(data.symbol!==symbol||data.market!==metaOf(symbol).market||!Array.isArray(data.points))throw Error('Contrato de série histórica inconsistente');
       return data;
     });
   historyCache.set(key,{promise,time:Date.now()});
@@ -77,9 +85,9 @@ export function createResearchTools({state,navigate,getJson}){
  };
  function renderExplorer(){
   const body=$('research-explore-body');if(!body)return;
-  const rows=explorationRows(state.data||{}, {search,market,sort});
+  const rows=explorationRows({...state.data,catalog:state.catalog||[]},{search,market,sort});
   const live=rows.filter(r=>!!r.quote).length;
-  $('research-explore-count').textContent=`${live} com cotação · ${rows.length} no filtro · universo de ${Object.keys(ASSETS).length} ativos cadastrados`;
+  $('research-explore-count').textContent=`${live} com cotação · ${rows.length} no filtro · cobertura do catálogo carregado`;
   body.innerHTML=rows.length?rows.map(({symbol,name,market,currency:ccy,quote:q})=>`<tr>
    <td><button type="button" class="research-ticker" data-research-detail="${symbol}">${esc(symbol)}</button><span class="research-symbol-sub">${esc(name)}</span></td>
    <td><span class="research-type">${esc(byMarket[market])}</span></td>
@@ -98,11 +106,11 @@ export function createResearchTools({state,navigate,getJson}){
   if(!window.Chart){canvas.hidden=true;fallback.hidden=false;fallback.textContent='Gráfico indisponível no navegador. Utilize os indicadores numéricos e as fontes abaixo.';return;}
   canvas.hidden=false;fallback.hidden=true;
   const colors=['#10b981','#60a5fa','#f59e0b','#a78bfa','#f472b6'];
-  const chart=new window.Chart(canvas,{type:'line',data:{labels,datasets:datasets.map((s,i)=>({label:s.symbol,data:s.values,borderColor:colors[i],backgroundColor:`${colors[i]}18`,pointRadius:labels.length>35?0:1.5,pointHoverRadius:4,tension:.12,borderWidth:2,fill:datasets.length===1,spanGaps:false}))},options:{responsive:true,maintainAspectRatio:false,animation:false,interaction:{intersect:false,mode:'index'},plugins:{legend:{display:datasets.length>1,labels:{color:'#c4d2e0',boxWidth:12,boxHeight:3}},tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${labelMode==='normalized'?num(ctx.parsed.y,2):currency(ctx.parsed.y,quote(selected)?.currency||ASSETS[selected].currency)}`}}},scales:{x:{ticks:{maxTicksLimit:8,color:'#97a9b9'},grid:{display:false}},y:{ticks:{color:'#97a9b9',callback:value=>labelMode==='normalized'?num(value,0):num(value,2)},grid:{color:'rgba(148,163,184,.12)'}}}}});
+  const chart=new window.Chart(canvas,{type:'line',data:{labels,datasets:datasets.map((s,i)=>({label:s.symbol,data:s.values,borderColor:colors[i],backgroundColor:`${colors[i]}18`,pointRadius:labels.length>35?0:1.5,pointHoverRadius:4,tension:.12,borderWidth:2,fill:datasets.length===1,spanGaps:false}))},options:{responsive:true,maintainAspectRatio:false,animation:false,interaction:{intersect:false,mode:'index'},plugins:{legend:{display:datasets.length>1,labels:{color:'#c4d2e0',boxWidth:12,boxHeight:3}},tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${labelMode==='normalized'?num(ctx.parsed.y,2):currency(ctx.parsed.y,quote(selected)?.currency||metaOf(selected).currency)}`}}},scales:{x:{ticks:{maxTicksLimit:8,color:'#97a9b9'},grid:{display:false}},y:{ticks:{color:'#97a9b9',callback:value=>labelMode==='normalized'?num(value,0):num(value,2)},grid:{color:'rgba(148,163,184,.12)'}}}}});
   if(which==='detail')detailChart=chart;else comparisonChart=chart;
  }
  function renderDetailHeader(){
-  const q=quote(selected),meta=ASSETS[selected];
+  const q=quote(selected),meta=metaOf(selected);
   $('research-asset-name').textContent=`${selected} · ${meta.name}`;
   $('research-asset-type').textContent=`${byMarket[meta.market]} · ${meta.currency}`;
   $('research-asset-price').textContent=q?currency(q.price,q.currency):'Sem cotação';
@@ -141,7 +149,7 @@ export function createResearchTools({state,navigate,getJson}){
   $('research-compare-count').textContent=`${members.size} de 5 ativos selecionados`;
   $('research-compare-run').disabled=members.size<2;
   const choices=$('research-compare-add');
-  choices.innerHTML='<option value="">Adicionar um ativo…</option>'+Object.keys(ASSETS).filter(s=>!members.has(s)).map(s=>`<option value="${s}">${s} · ${esc(ASSETS[s].name)}</option>`).join('');
+  choices.innerHTML='<option value="">Adicionar um ativo…</option>'+[...new Set([...Object.keys(ASSETS),...catalog.keys()])].filter(s=>!members.has(s)).map(s=>`<option value="${s}">${s} · ${esc(metaOf(s).name)}</option>`).join('');
   renderExplorer();
  }
  function addCompare(symbol){
@@ -172,7 +180,7 @@ export function createResearchTools({state,navigate,getJson}){
   if(request!==compareRequest)return;
   $('research-compare-table').innerHTML=symbols.map(symbol=>{
    const q=quote(symbol),history=fetched.find(s=>s.symbol===symbol),summary=history?summarizeHistory(history):null;
-   return `<tr><td><strong>${esc(symbol)}</strong><span class="research-symbol-sub">${esc(ASSETS[symbol].name)}</span></td><td>${esc(byMarket[ASSETS[symbol].market])}</td><td class="research-num">${q?currency(q.price,q.currency):'—'}</td><td class="research-num ${delta(q?.changePct)}">${percent(q?.changePct)}</td><td class="research-num ${delta(summary?.returnPct)}">${percent(summary?.returnPct)}</td><td><span class="research-provider">${q?esc(q.provider):'Sem preço'}</span><span class="research-symbol-sub">${summary?`${esc(history.provider)} · ${summary.first} — ${summary.last}`:esc(failures.get(symbol)||'Série não disponível')}</span></td></tr>`;
+   return `<tr><td><strong>${esc(symbol)}</strong><span class="research-symbol-sub">${esc(metaOf(symbol).name)}</span></td><td>${esc(byMarket[metaOf(symbol).market])}</td><td class="research-num">${q?currency(q.price,q.currency):'—'}</td><td class="research-num ${delta(q?.changePct)}">${percent(q?.changePct)}</td><td class="research-num ${delta(summary?.returnPct)}">${percent(summary?.returnPct)}</td><td><span class="research-provider">${q?esc(q.provider):'Sem preço'}</span><span class="research-symbol-sub">${summary?`${esc(history.provider)} · ${summary.first} — ${summary.last}`:esc(failures.get(symbol)||'Série não disponível')}</span></td></tr>`;
   }).join('');
   if(fetched.length<2){$('research-compare-status').textContent=`Séries comparáveis insuficientes (${fetched.length}/${symbols.length}).`;
    $('research-compare-chart-fallback').textContent='Não há pelo menos duas séries válidas. Confira limites de acesso às APIs e histórico.';return;}
@@ -183,6 +191,24 @@ export function createResearchTools({state,navigate,getJson}){
   $('research-compare-foot').textContent=`${fetched.map(s=>`${s.symbol}: ${s.provider} (${s.priceBasis})`).join(' · ')}. Variações calculadas sobre preço de fechamento; não incluem dividendos, custos ou câmbio de conversão. Séries com ajustes distintos podem não ser diretamente comparáveis.`;
   setChart('compare',normalized.dates,normalized.datasets,'normalized');
  }
+ function registerCatalog(records=[]){
+  for(const row of records){
+   if(!row||!/^[A-Z0-9]{3,12}$/.test(row.symbol)||row.market!=='BR'||row.currency!=='BRL')continue;
+   const meta={name:String(row.name||row.symbol).slice(0,90),market:'BR',currency:'BRL'};
+   const itemQuote=Number.isFinite(row.price)&&row.price>0?{symbol:row.symbol,name:meta.name,currency:'BRL',price:row.price,changePct:row.changePct,
+    provider:row.provider||'brapi',providerAsOf:row.providerAsOf||null,retrievedAt:row.retrievedAt||null}:null;
+   catalog.set(row.symbol,{meta,quote:itemQuote});
+  }
+  const dropdown=$('research-asset-symbol');
+  if(dropdown){
+   dropdown.innerHTML=[...new Set([...Object.keys(ASSETS),...catalog.keys()])].map(s=>'<option value="'+esc(s)+'">'+esc(s)+' · '+esc(metaOf(s).name)+'</option>').join('');
+   dropdown.value=selected;
+  }
+  renderSelected();
+  if(state.active==='market')renderExplorer();
+  if(state.active==='asset')renderDetailHeader();
+ }
+
  function mount(){
   $('research-explore-search').addEventListener('input',event=>{search=event.target.value;renderExplorer();});
   $('research-explore-market').addEventListener('change',event=>{market=event.target.value;renderExplorer();});
@@ -217,5 +243,5 @@ export function createResearchTools({state,navigate,getJson}){
   if(view==='compare'){renderSelected();renderComparison();}
  }
  function refresh(){renderExplorer();renderDetailHeader();}
- return {mount,refresh,onNavigate,selectAsset,addCompare};
+ return {mount,refresh,onNavigate,selectAsset,addCompare,registerCatalog};
 }

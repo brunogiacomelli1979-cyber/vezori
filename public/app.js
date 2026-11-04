@@ -248,7 +248,7 @@ function init(){
  state.transactions=restore();$('tx-date').value=new Date().toLocaleDateString('en-CA');
  apexUI=createApexDashboard({state,save,portfolioView,navigate});apexUI.mount();
  researchTools=createResearchTools({state,navigate,getJson});researchTools.mount();
- marketHome=createMarketHome({state,navigate,selectAsset:symbol=>researchTools.selectAsset(symbol)});marketHome.mount();
+ marketHome=createMarketHome({state,navigate,selectAsset:symbol=>researchTools.selectAsset(symbol),getJson,registerCatalog:rows=>researchTools.registerCatalog(rows)});marketHome.mount();
  document.querySelectorAll('[data-view]').forEach(x=>x.addEventListener('click',()=>navigate(x.dataset.view)));
  document.querySelectorAll('[data-go]').forEach(x=>x.addEventListener('click',()=>navigate(x.dataset.go)));
  $('overview-strategies').addEventListener('click',event=>{if(event.target.closest('[data-strategy]'))navigate('strategies');});
