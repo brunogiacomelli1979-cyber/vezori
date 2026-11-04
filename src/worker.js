@@ -2,7 +2,6 @@
 export const BR_SYMBOLS=['PETR4','VALE3','ITUB4','MGLU3'];
 export const US_SYMBOLS=['VOO','QQQ','AAPL'];
 export const CRYPTO_BY_SYMBOL=Object.freeze({BTC:'bitcoin',ETH:'ethereum',SOL:'solana'});
-export const MB_PAIRS=Object.freeze({BTC:'BTC-BRL',ETH:'ETH-BRL',SOL:'SOL-BRL'});
 const TTL_DASHBOARD=300,TTL_QUOTE=300,TTL_HISTORY=1800;
 const headers={
   'content-type':'application/json; charset=utf-8',
@@ -69,37 +68,15 @@ export async function selic(fetcher=fetch){
  return {code:'SELIC_META',name:'Meta Selic',value,unit:'% a.a.',date:last.data||null,provider:'BCB / SGS 432'};
 }
 export async function cryptoQuotes(key,fetcher=fetch){
- if(!key)throw new Error('Chave CoinGecko Demo não configurada');
  const ids=Object.values(CRYPTO_BY_SYMBOL).join(',');
  const url=`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=brl%2Cusd&include_24hr_change=true&include_last_updated_at=true`;
- const data=await readJson(url,{'x-cg-demo-api-key':key},fetcher);
- return Object.entries(CRYPTO_BY_SYMBOL).flatMap(([symbol,id])=>{
+ const data=await readJson(url,key?{'x-cg-demo-api-key':key}:{},fetcher);
+ const out=Object.entries(CRYPTO_BY_SYMBOL).flatMap(([symbol,id])=>{
   const row=data[id],price=numeric(row?.brl);
   if(!positive(price))return [];
-  return [{symbol,name:id[0].toUpperCase()+id.slice(1),market:'CRYPTO',currency:'BRL',price,priceUSD:numeric(row.usd),changePct:numeric(row.brl_24h_change),provider:'CoinGecko',providerAsOf:positive(numeric(row.last_updated_at))?new Date(row.last_updated_at*1000).toISOString():null,retrievedAt:now()}];
+  return [{symbol,name:id[0].toUpperCase()+id.slice(1),market:'CRYPTO',currency:'BRL',price,priceUSD:numeric(row.usd),changePct:numeric(row.brl_24h_change),provider:key?'CoinGecko Demo':'CoinGecko Public',providerAsOf:positive(numeric(row.last_updated_at))?new Date(row.last_updated_at*1000).toISOString():null,retrievedAt:now()}];
  });
-}
-/** Cotacoes publicas em BRL da corretora Mercado Bitcoin; nao sao preco consolidado global. */
-export async function mercadoBitcoinQuotes(fetcher=fetch){
- const pairs=Object.values(MB_PAIRS).join(',');
- const url='https://api.mercadobitcoin.net/api/v4/tickers?symbols='+encodeURIComponent(pairs);
- const body=await readJson(url,{},fetcher);
- const rows=Array.isArray(body)?body:(Array.isArray(body.tickers)?body.tickers:[]);
- const indexed=new Map(rows.map(row=>[String(row?.pair||'').toUpperCase(),row]));
- const out=[];
- for(const [symbol,pair] of Object.entries(MB_PAIRS)){
-  const row=indexed.get(pair),price=numeric(row?.last);
-  if(!positive(price))continue;
-  const rawTime=numeric(row?.date);
-  const milliseconds=rawTime===null?null:rawTime>1e17?rawTime/1e6:rawTime>1e12?rawTime:rawTime>1e9?rawTime*1000:null;
-  const dt=milliseconds===null?null:new Date(milliseconds);
-  const providerAsOf=dt&&Number.isFinite(dt.getTime())?dt.toISOString():null;
-  out.push({symbol,name:CRYPTO_BY_SYMBOL[symbol][0].toUpperCase()+CRYPTO_BY_SYMBOL[symbol].slice(1),
-   market:'CRYPTO',currency:'BRL',price,changePct:null,
-   provider:'Mercado Bitcoin',providerAsOf,retrievedAt:now(),
-   priceBasis:'ultima negociacao na exchange; nao representa preco medio global'});
- }
- if(!out.length)throw new Error('Mercado Bitcoin sem cotacoes validas');
+ if(!out.length)throw new Error('CoinGecko sem preços de cripto válidos');
  return out;
 }
 export async function usQuote(symbol,key,fetcher=fetch){
@@ -145,14 +122,13 @@ export async function historyQuote(market,symbol,range,env={},fetcher=fetch){
  throw new Error('Mercado não suportado');
 }
 export async function buildDashboard(env={},fetcher=fetch){
- const out={mode:'real_market_data',generatedAt:now(),quotes:[],fx:[],macro:[],availability:{brapi:'available',frankfurter:'available',bcb:'available',coingecko:env.COINGECKO_API_KEY?'available':'key_required',mercadobitcoin:env.COINGECKO_API_KEY?'standby':'available',twelvedata:env.TWELVEDATA_API_KEY?'available':'key_required'},errors:[],meta:{simulatedPrices:false,refreshSeconds:300,reference:'Preços de última cotação; podem ter atraso e não são dados tick-by-tick'}};
+ const out={mode:'real_market_data',generatedAt:now(),quotes:[],fx:[],macro:[],availability:{brapi:'available',frankfurter:'available',bcb:'available',coingecko:env.COINGECKO_API_KEY?'available':'public_no_key',twelvedata:env.TWELVEDATA_API_KEY?'available':'key_required'},errors:[],meta:{simulatedPrices:false,refreshSeconds:300,reference:'Preços de última cotação; podem ter atraso e não são dados tick-by-tick'}};
  const tasks=[];
  const add=(source,kind,run)=>tasks.push({source,kind,run});
  add('brapi','quotes',()=>brazilQuotes(BR_SYMBOLS,env,fetcher));
  for(const base of ['USD','EUR'])add('frankfurter','fx',()=>currencyRate(base,'BRL',fetcher));
  add('bcb','macro',()=>selic(fetcher));
- if(env.COINGECKO_API_KEY)add('coingecko','quotes',()=>cryptoQuotes(env.COINGECKO_API_KEY,fetcher));
- else add('mercadobitcoin','quotes',()=>mercadoBitcoinQuotes(fetcher));
+ add('coingecko','quotes',()=>cryptoQuotes(env.COINGECKO_API_KEY,fetcher));
  if(env.TWELVEDATA_API_KEY)for(const symbol of US_SYMBOLS)add('twelvedata','quotes',()=>usQuote(symbol,env.TWELVEDATA_API_KEY,fetcher));
  // Concurrency bounded to stay within Cloudflare's six outbound simultaneous connections.
  for(let i=0;i<tasks.length;i+=4){
@@ -189,7 +165,7 @@ export default {
   if(!path.startsWith('/api/'))return env.ASSETS?.fetch?env.ASSETS.fetch(request):new Response('VEZORI: inicialize via Cloudflare Wrangler.',{status:404});
   if(request.method!=='GET')return fail('Método não permitido',405);
   if(path==='/api/health')return respond({service:'VEZORI',status:'ok',timestamp:now(),sourcesConfigured:{brapi:!!env.BRAPI_API_KEY,coingecko:!!env.COINGECKO_API_KEY,twelvedata:!!env.TWELVEDATA_API_KEY}});
-  if(path==='/api/dashboard')return cacheResult(request,ctx,'/api/dashboard?version=3',TTL_DASHBOARD,async()=>{
+  if(path==='/api/dashboard')return cacheResult(request,ctx,'/api/dashboard?version=4',TTL_DASHBOARD,async()=>{
    const data=await buildDashboard(env);
    data.meta.refreshSeconds=data.errors.length?60:TTL_DASHBOARD;
    return respond(data,200,data.meta.refreshSeconds);
@@ -202,7 +178,7 @@ export default {
      let q;
      if(market==='BR')q=await brazilQuote(symbol,env);
      else if(market==='US')q=await usQuote(symbol,env.TWELVEDATA_API_KEY);
-     else {if(!Object.hasOwn(CRYPTO_BY_SYMBOL,symbol))throw new Error('Criptomoeda indisponível');q=(env.COINGECKO_API_KEY?await cryptoQuotes(env.COINGECKO_API_KEY):await mercadoBitcoinQuotes()).find(row=>row.symbol===symbol);}
+     else {if(!Object.hasOwn(CRYPTO_BY_SYMBOL,symbol))throw new Error('Criptomoeda indisponível');q=(await cryptoQuotes(env.COINGECKO_API_KEY)).find(row=>row.symbol===symbol);}
      if(!q)throw new Error('Cotação não disponível');return respond({quote:q},200,TTL_QUOTE);
     }catch(err){return fail(errorMessage(err),422);}
    });

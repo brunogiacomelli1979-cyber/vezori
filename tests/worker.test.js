@@ -1,22 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import worker,{BR_SYMBOLS,buildDashboard,brazilQuote,brazilQuotes,historyQuote,cryptoQuotes,mercadoBitcoinQuotes} from '../src/worker.js';
+import worker,{BR_SYMBOLS,buildDashboard,brazilQuote,brazilQuotes,historyQuote,cryptoQuotes} from '../src/worker.js';
 function fakeFetch(url,options={}){
  const uri=new URL(url);let obj;
  if(uri.hostname==='brapi.dev'){
   const symbols=(uri.searchParams.get('symbols')||'').split(',');
   if(uri.pathname.includes('/historical'))obj={results:[{symbol:symbols[0],data:{historicalDataPrice:[{date:1793450000,close:25,adjustedClose:25.5},{date:1793536400,close:26,adjustedClose:26.5}]}}]};
   else obj={results:symbols.map(symbol=>({requestedSymbol:symbol,symbol,data:{shortName:'Empresa '+symbol,currency:'BRL',regularMarketPrice:40.25,regularMarketChangePercent:1.3,regularMarketTime:'2026-11-04T11:00:00Z'}}))};
- }else if(uri.hostname==='api.mercadobitcoin.net'){
-  obj=[
-   {pair:'BTC-BRL',last:'390000.00',date:1793800000000000000},
-   {pair:'ETH-BRL',last:'18000.00',date:1793800000000000000},
-   {pair:'SOL-BRL',last:'990.00',date:1793800000000000000}
-  ];
  }else if(uri.hostname==='api.frankfurter.dev')obj={base:uri.pathname.includes('usd')?'USD':'EUR',quote:'BRL',rate:uri.pathname.includes('usd')?5.4:6.3,date:'2026-11-03'};
  else if(uri.hostname==='api.bcb.gov.br')obj=[{data:'04/11/2026',valor:'13.75'}];
  else if(uri.hostname==='api.coingecko.com'){
-  assert.equal(options.headers['x-cg-demo-api-key'],'demo-secret');
+  assert.ok(!options.headers['x-cg-demo-api-key']||options.headers['x-cg-demo-api-key']==='demo-secret');
   if(uri.pathname.includes('market_chart'))obj={prices:[[1793450000000,390000],[1793536400000,400000]]};
   else obj={bitcoin:{brl:390000,usd:72000,brl_24h_change:2,last_updated_at:1793800000},ethereum:{brl:18000,usd:3300,brl_24h_change:-1,last_updated_at:1793800000},solana:{brl:990,usd:190,brl_24h_change:0.5,last_updated_at:1793800000}};
  }else if(uri.hostname==='api.twelvedata.com'){
@@ -30,9 +24,9 @@ test('sem chaves: fontes públicas retornam ações BR, FX e Selic, sem fabricar
  const d=await buildDashboard({},fakeFetch);
  assert.equal(d.quotes.length,7);assert.deepEqual(d.quotes.filter(x=>x.market==='BR').map(x=>x.symbol),BR_SYMBOLS);
  assert.equal(d.quotes.find(x=>x.symbol==='BTC').price,390000);
- assert.equal(d.availability.mercadobitcoin,'available');
+ assert.equal(d.availability.coingecko,'public_no_key');
  assert.equal(d.fx.length,2);assert.equal(d.macro[0].value,13.75);
- assert.equal(d.availability.coingecko,'key_required');assert.equal(d.availability.twelvedata,'key_required');assert.equal(d.meta.simulatedPrices,false);
+ assert.equal(d.availability.coingecko,'public_no_key');assert.equal(d.availability.twelvedata,'key_required');assert.equal(d.meta.simulatedPrices,false);
 });
 test('com chaves: CoinGecko e Twelve Data entram na carteira de mercado sem vazar segredos',async()=>{
  const d=await buildDashboard({COINGECKO_API_KEY:'demo-secret',TWELVEDATA_API_KEY:'td-secret'},fakeFetch);
@@ -64,9 +58,11 @@ test('histórico dos EUA só com chave e tem preços reais vindos do mock',async
  await assert.rejects(()=>historyQuote('US','VOO','1mo',{},fakeFetch),/exige chave/);
  const d=await historyQuote('US','VOO','1mo',{TWELVEDATA_API_KEY:'td-secret'},fakeFetch);assert.equal(d.points.at(-1).close,615.56);
 });
-test('criptomoedas: cotação exige chave e respeita formato da API',async()=>{
- await assert.rejects(()=>cryptoQuotes(null,fakeFetch),/não configurada/);
- const d=await cryptoQuotes('demo-secret',fakeFetch);assert.equal(d.length,3);
+test('criptomoedas: API publica sem chave e Demo com chave preservam fonte',async()=>{
+ const free=await cryptoQuotes(null,fakeFetch);assert.equal(free.length,3);
+ assert.equal(free[0].provider,'CoinGecko Public');
+ const demo=await cryptoQuotes('demo-secret',fakeFetch);assert.equal(demo.length,3);
+ assert.equal(demo[0].provider,'CoinGecko Demo');
 });
 test('saúde informa apenas configuração e rotas desconhecidas são 404',async()=>{
  const env={COINGECKO_API_KEY:'not-exposed',ASSETS:{fetch:()=>new Response('asset')}};
@@ -98,22 +94,6 @@ test('rota history retorna série validada e sem preços inventados',async()=>{
  }finally{globalThis.fetch=original;}
 });
 
-test('Mercado Bitcoin publica ultimo preco em BRL e timestamp sem inventar percentual',async()=>{
- const rows=await mercadoBitcoinQuotes(fakeFetch);
- assert.equal(rows.length,3);
- assert.equal(rows.find(r=>r.symbol==='BTC').price,390000);
- assert.equal(rows.find(r=>r.symbol==='ETH').provider,'Mercado Bitcoin');
- assert.equal(rows.find(r=>r.symbol==='BTC').changePct,null);
- assert.match(rows[0].providerAsOf,/^2026-/);
-});
-test('quando a fonte publica de cripto falha, nao aparece preco de fallback ficticio',async()=>{
- const failing=(url,opts)=>String(url).includes('mercadobitcoin.net')?Promise.resolve(new Response('error',{status:429})):fakeFetch(url,opts);
- const d=await buildDashboard({},failing);
- assert.equal(d.quotes.some(q=>q.market==='CRYPTO'),false);
- assert.equal(d.availability.mercadobitcoin,'partial_failure');
- assert.equal(d.errors.some(e=>e.source==='mercadobitcoin'),true);
-});
-
 test('consultas brasileiras em lote emitem so uma requisicao para quatro ativos',async()=>{
  const calls=[];
  const spy=(url,opts)=>{calls.push(String(url));return fakeFetch(url,opts)};
@@ -129,4 +109,13 @@ test('HTTP 429 na brapi nao fabrica cotacao, mas preserva outras fontes',async()
  assert.equal(d.quotes.filter(q=>q.market==='CRYPTO').length,3);
  assert.equal(d.availability.brapi,'partial_failure');
  assert.equal(d.fx.length,2);
+});
+
+test('falha da API pública CoinGecko remove preços cripto sem afetar ações e câmbio',async()=>{
+ const failing=(url,opts)=>String(url).includes('coingecko.com')?Promise.resolve(new Response('rate limit',{status:429})):fakeFetch(url,opts);
+ const result=await buildDashboard({},failing);
+ assert.equal(result.quotes.filter(q=>q.market==='CRYPTO').length,0);
+ assert.equal(result.quotes.filter(q=>q.market==='BR').length,4);
+ assert.equal(result.availability.coingecko,'partial_failure');
+ assert.equal(result.errors.some(e=>e.source==='coingecko'),true);
 });
