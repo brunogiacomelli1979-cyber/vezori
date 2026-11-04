@@ -29,14 +29,31 @@ async function readJson(url,extraHeaders={},fetcher=fetch){
  return data;
 }
 function brHeaders(env){return env.BRAPI_API_KEY?{authorization:`Bearer ${env.BRAPI_API_KEY}`}:{}};
+/** Agrupa os quatro ativos gratuitos em uma unica chamada para reduzir HTTP 429. */
+export async function brazilQuotes(symbols,env={},fetcher=fetch){
+ if(!Array.isArray(symbols)||!symbols.length||symbols.length>4)throw new Error('Quantidade de tickers inválida');
+ const unique=[...new Set(symbols)];
+ for(const symbol of unique){
+  if(!/^[A-Z0-9]{4,8}$/.test(symbol))throw new Error('Ticker brasileiro inválido');
+  if(!env.BRAPI_API_KEY&&!BR_SYMBOLS.includes(symbol))throw new Error('Ativo exige chave brapi');
+ }
+ const raw=await readJson('https://brapi.dev/api/v2/stocks/quote?symbols='+encodeURIComponent(unique.join(',')),brHeaders(env),fetcher);
+ const results=Array.isArray(raw.results)?raw.results:[];
+ const items=[];
+ for(const symbol of unique){
+  const item=results.find(row=>row?.requestedSymbol===symbol||row?.symbol===symbol);
+  const row=item?.data||item,price=numeric(row?.regularMarketPrice);
+  if(!positive(price))continue;
+  items.push({symbol,name:String(row.shortName||row.longName||symbol).slice(0,90),
+   market:'BR',currency:row.currency||'BRL',price,changePct:numeric(row.regularMarketChangePercent),
+   provider:'brapi',providerAsOf:row.regularMarketTime||null,retrievedAt:now()});
+ }
+ if(!items.length)throw new Error('Provedor sem preços brasileiros válidos');
+ return items;
+}
 export async function brazilQuote(symbol,env={},fetcher=fetch){
- if(!/^[A-Z0-9]{4,8}$/.test(symbol))throw new Error('Ticker brasileiro inválido');
- if(!env.BRAPI_API_KEY&&!BR_SYMBOLS.includes(symbol))throw new Error('Ativo exige chave brapi');
- const body=await readJson(`https://brapi.dev/api/v2/stocks/quote?symbols=${symbol}`,brHeaders(env),fetcher);
- const item=body.results?.[0],row=item?.data||item;
- const price=numeric(row?.regularMarketPrice);
- if(!positive(price))throw new Error('Preço brasileiro indisponível');
- return {symbol:String(item.symbol||symbol),name:String(row.shortName||row.longName||symbol).slice(0,90),market:'BR',currency:row.currency||'BRL',price,changePct:numeric(row.regularMarketChangePercent),provider:'brapi',providerAsOf:row.regularMarketTime||null,retrievedAt:now()};
+ const list=await brazilQuotes([symbol],env,fetcher);
+ return list[0];
 }
 export async function currencyRate(base,quote,fetcher=fetch){
  if(!['BRL','USD','EUR'].includes(base)||!['BRL','USD','EUR'].includes(quote)||base===quote)throw new Error('Par cambial inválido');
@@ -131,7 +148,7 @@ export async function buildDashboard(env={},fetcher=fetch){
  const out={mode:'real_market_data',generatedAt:now(),quotes:[],fx:[],macro:[],availability:{brapi:'available',frankfurter:'available',bcb:'available',coingecko:env.COINGECKO_API_KEY?'available':'key_required',mercadobitcoin:env.COINGECKO_API_KEY?'standby':'available',twelvedata:env.TWELVEDATA_API_KEY?'available':'key_required'},errors:[],meta:{simulatedPrices:false,refreshSeconds:300,reference:'Preços de última cotação; podem ter atraso e não são dados tick-by-tick'}};
  const tasks=[];
  const add=(source,kind,run)=>tasks.push({source,kind,run});
- for(const symbol of BR_SYMBOLS)add('brapi','quotes',()=>brazilQuote(symbol,env,fetcher));
+ add('brapi','quotes',()=>brazilQuotes(BR_SYMBOLS,env,fetcher));
  for(const base of ['USD','EUR'])add('frankfurter','fx',()=>currencyRate(base,'BRL',fetcher));
  add('bcb','macro',()=>selic(fetcher));
  if(env.COINGECKO_API_KEY)add('coingecko','quotes',()=>cryptoQuotes(env.COINGECKO_API_KEY,fetcher));
@@ -142,7 +159,14 @@ export async function buildDashboard(env={},fetcher=fetch){
   const batch=tasks.slice(i,i+4),results=await Promise.allSettled(batch.map(t=>t.run()));
   results.forEach((result,j)=>{
    const t=batch[j];
-   if(result.status==='fulfilled')out[t.kind].push(...(Array.isArray(result.value)?result.value:[result.value]));
+   if(result.status==='fulfilled'){
+    const values=Array.isArray(result.value)?result.value:[result.value];
+    out[t.kind].push(...values);
+    if(t.source==='brapi'){
+     const missing=BR_SYMBOLS.filter(symbol=>!values.some(q=>q.symbol===symbol));
+     if(missing.length){out.availability.brapi='partial_failure';out.errors.push({source:'brapi',message:'Ativos sem cotação: '+missing.join(', ')});}
+    }
+   }
    else {out.errors.push({source:t.source,message:errorMessage(result.reason)});out.availability[t.source]='partial_failure';}
   });
  }
@@ -165,7 +189,11 @@ export default {
   if(!path.startsWith('/api/'))return env.ASSETS?.fetch?env.ASSETS.fetch(request):new Response('VEZORI: inicialize via Cloudflare Wrangler.',{status:404});
   if(request.method!=='GET')return fail('Método não permitido',405);
   if(path==='/api/health')return respond({service:'VEZORI',status:'ok',timestamp:now(),sourcesConfigured:{brapi:!!env.BRAPI_API_KEY,coingecko:!!env.COINGECKO_API_KEY,twelvedata:!!env.TWELVEDATA_API_KEY}});
-  if(path==='/api/dashboard')return cacheResult(request,ctx,'/api/dashboard',TTL_DASHBOARD,async()=>respond(await buildDashboard(env),200,TTL_DASHBOARD));
+  if(path==='/api/dashboard')return cacheResult(request,ctx,'/api/dashboard?version=3',TTL_DASHBOARD,async()=>{
+   const data=await buildDashboard(env);
+   data.meta.refreshSeconds=data.errors.length?60:TTL_DASHBOARD;
+   return respond(data,200,data.meta.refreshSeconds);
+  });
   if(path==='/api/quote'){
    const market=String(url.searchParams.get('market')||'').toUpperCase(),symbol=String(url.searchParams.get('symbol')||'').toUpperCase();
    if(!['BR','US','CRYPTO'].includes(market)||!(/^[A-Z0-9.]{1,8}$/.test(symbol)))return fail('Parâmetros inválidos',400);

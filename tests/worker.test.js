@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import worker,{BR_SYMBOLS,buildDashboard,brazilQuote,historyQuote,cryptoQuotes,mercadoBitcoinQuotes} from '../src/worker.js';
+import worker,{BR_SYMBOLS,buildDashboard,brazilQuote,brazilQuotes,historyQuote,cryptoQuotes,mercadoBitcoinQuotes} from '../src/worker.js';
 function fakeFetch(url,options={}){
  const uri=new URL(url);let obj;
  if(uri.hostname==='brapi.dev'){
-  const symbol=uri.searchParams.get('symbols');
-  if(uri.pathname.includes('/historical'))obj={results:[{symbol,data:{historicalDataPrice:[{date:1793450000,close:25,adjustedClose:25.5},{date:1793536400,close:26,adjustedClose:26.5}]}}]};
-  else obj={results:[{symbol,data:{shortName:'Empresa '+symbol,currency:'BRL',regularMarketPrice:40.25,regularMarketChangePercent:1.3,regularMarketTime:'2026-11-04T11:00:00Z'}}]};
+  const symbols=(uri.searchParams.get('symbols')||'').split(',');
+  if(uri.pathname.includes('/historical'))obj={results:[{symbol:symbols[0],data:{historicalDataPrice:[{date:1793450000,close:25,adjustedClose:25.5},{date:1793536400,close:26,adjustedClose:26.5}]}}]};
+  else obj={results:symbols.map(symbol=>({requestedSymbol:symbol,symbol,data:{shortName:'Empresa '+symbol,currency:'BRL',regularMarketPrice:40.25,regularMarketChangePercent:1.3,regularMarketTime:'2026-11-04T11:00:00Z'}}))};
  }else if(uri.hostname==='api.mercadobitcoin.net'){
   obj=[
    {pair:'BTC-BRL',last:'390000.00',date:1793800000000000000},
@@ -41,7 +41,14 @@ test('com chaves: CoinGecko e Twelve Data entram na carteira de mercado sem vaza
  assert.equal(JSON.stringify(d).includes('demo-secret'),false);assert.equal(JSON.stringify(d).includes('td-secret'),false);
 });
 test('falha de provedor não produz números substitutos',async()=>{
- const failure=(url,options)=>String(url).includes('VALE3')?Promise.resolve(new Response('limite',{status:429})):fakeFetch(url,options);
+ const failure=async(url,options)=>{
+  const result=await fakeFetch(url,options);
+  if(String(url).includes('brapi.dev')&&String(url).includes('/quote')){
+   const json=await result.json();json.results=json.results.filter(row=>row.symbol!=='VALE3');
+   return new Response(JSON.stringify(json),{status:200});
+  }
+  return result;
+ };
  const d=await buildDashboard({},failure);assert.equal(d.quotes.length,6);
  assert.equal(d.availability.brapi,'partial_failure');assert.equal(d.quotes.some(q=>q.symbol==='VALE3'),false);
 });
@@ -105,4 +112,21 @@ test('quando a fonte publica de cripto falha, nao aparece preco de fallback fict
  assert.equal(d.quotes.some(q=>q.market==='CRYPTO'),false);
  assert.equal(d.availability.mercadobitcoin,'partial_failure');
  assert.equal(d.errors.some(e=>e.source==='mercadobitcoin'),true);
+});
+
+test('consultas brasileiras em lote emitem so uma requisicao para quatro ativos',async()=>{
+ const calls=[];
+ const spy=(url,opts)=>{calls.push(String(url));return fakeFetch(url,opts)};
+ const rows=await brazilQuotes(BR_SYMBOLS,{},spy);
+ assert.equal(rows.length,4);
+ assert.equal(calls.length,1);
+ assert.match(calls[0],/PETR4%2CVALE3%2CITUB4%2CMGLU3/);
+});
+test('HTTP 429 na brapi nao fabrica cotacao, mas preserva outras fontes',async()=>{
+ const fail=(url,opts)=>String(url).includes('brapi.dev')?Promise.resolve(new Response('rate limit',{status:429})):fakeFetch(url,opts);
+ const d=await buildDashboard({},fail);
+ assert.equal(d.quotes.filter(q=>q.market==='BR').length,0);
+ assert.equal(d.quotes.filter(q=>q.market==='CRYPTO').length,3);
+ assert.equal(d.availability.brapi,'partial_failure');
+ assert.equal(d.fx.length,2);
 });
