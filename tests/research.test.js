@@ -12,7 +12,8 @@ test('normalização intersecta datas, não interpola faltantes e parte de 100',
   s('BTC',[point('2026-10-02',100),point('2026-10-03',90),point('2026-10-04',120)])
  ]);
  assert.deepEqual(normalized.dates,['2026-10-02','2026-10-03']);
- assert.deepEqual(normalized.datasets[0].values,[100,12/11*100]);
+ assert.equal(normalized.datasets[0].values[0],100);
+ assert.ok(Math.abs(normalized.datasets[0].values[1]-12/11*100)<1e-9);
  assert.deepEqual(normalized.datasets[1].values,[100,90]);
 });
 test('séries sem datas em comum exibem indisponibilidade sem gerar curva',()=>{
