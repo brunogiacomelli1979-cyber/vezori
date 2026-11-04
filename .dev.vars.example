@@ -1,0 +1,5 @@
+# Copiar para .dev.vars e preencher apenas no seu computador.
+# NUNCA commitar .dev.vars ou compartilhar credenciais.
+BRAPI_API_KEY=
+COINGECKO_API_KEY=
+TWELVEDATA_API_KEY=

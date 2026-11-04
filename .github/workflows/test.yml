@@ -1,0 +1,21 @@
+name: Testes do motor financeiro e das APIs
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verificar sintaxe
+        run: |
+          node --check src/worker.js
+          node --check public/finance.js
+          node --check public/app.js
+      - name: Executar testes (sem credenciais)
+        run: node --test tests/*.test.js

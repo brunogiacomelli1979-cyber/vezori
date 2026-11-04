@@ -1,0 +1,15 @@
+{
+  "name": "vezori",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "VEZORI: inteligência de investimentos com dados de mercado reais e carteira de operações auditáveis",
+  "scripts": {
+    "dev": "wrangler dev --local",
+    "deploy": "wrangler deploy",
+    "test": "node --test tests/*.test.js",
+    "check": "node --check src/worker.js && node --check public/app.js && node --check public/finance.js && npm test"
+  },
+  "devDependencies": {"wrangler": "^4.0.0"},
+  "engines": {"node": ">=20"}
+}

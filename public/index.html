@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#07111c" />
+  <meta name="description" content="Plataforma independente de inteligência de investimentos com cotações reais e laboratório de estratégias." />
+  <title>VEZORI | Inteligência de Investimentos</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="/styles.css" />
+  <script type="module" src="/app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#page-content">Pular para conteúdo</a>
+  <div class="shell">
+    <aside class="sidebar" aria-label="Navegação principal">
+      <a class="brand" href="#overview" aria-label="VEZORI">
+        <span class="brand-icon">V<span class="gold-dot">.</span></span>
+        <span class="brand-words"><strong>VEZORI</strong><small>VEJA ALÉM DOS NÚMEROS</small></span>
+      </a>
+      <div class="workspace-label">WORKSPACE <span>01</span></div>
+      <nav id="menu" class="nav-links">
+        <button class="nav active" data-view="overview"><span>▤</span> Visão geral</button>
+        <button class="nav" data-view="market"><span>↗</span> Mercado real</button>
+        <button class="nav" data-view="portfolio"><span>◫</span> Minha carteira</button>
+        <button class="nav" data-view="strategies"><span>◇</span> Laboratório</button>
+        <button class="nav" data-view="about"><span>⚙</span> Integrações</button>
+      </nav>
+      <div class="sidebar-bottom"><span class="sidebar-dot"></span><span>Dados reais por API<br/><small>Inteligência de mercado · v1.0</small></span></div>
+    </aside>
+    <div class="main-frame">
+      <header class="topbar">
+        <div class="breadcrumb">PLATAFORMA <span>/</span> <strong id="breadcrumb">VISÃO GERAL</strong></div>
+        <div class="top-actions"><span class="live-pill" id="api-status"><span class="dot pulse"></span> Conectando às fontes...</span><button class="button small outline" id="refresh" type="button">↻ Atualizar cotações</button></div>
+      </header>
+      <main id="page-content" class="content">
+        <section id="view-overview" class="view active">
+          <div class="hero">
+            <div><div class="eyebrow">MARKET INTELLIGENCE / BRASIL & GLOBAL</div><h1>Veja além<br/><em>dos números.</em></h1><p>Seu centro de inteligência financeira. Cotações obtidas de APIs reais, desempenho auditável e estratégias para estudar o mercado.</p><div class="hero-tags"><span>BRASIL</span><span>GLOBAL</span><span>CRIPTO</span><span>MACRO</span></div></div>
+            <div class="hero-aside"><span class="hero-line">● MARKET DATA</span><strong id="hero-count">—</strong><small>ativos com cotação disponível</small><span id="hero-time" class="date-readout">Aguardando consulta</span></div>
+          </div>
+          <div class="section-heading"><div><div class="eyebrow">PAINEL DO MERCADO</div><h2>Indicadores de referência</h2></div><span class="muted small-text">Cotações podem ter atraso. Consulte a data de referência.</span></div>
+          <div id="overview-kpis" class="kpi-grid" aria-live="polite">
+            <article class="metric-card"><div class="metric-title">USD / BRL</div><div class="metric-value skeleton">—</div></article>
+            <article class="metric-card"><div class="metric-title">EUR / BRL</div><div class="metric-value skeleton">—</div></article>
+            <article class="metric-card"><div class="metric-title">META SELIC</div><div class="metric-value skeleton">—</div></article>
+            <article class="metric-card"><div class="metric-title">BITCOIN / BRL</div><div class="metric-value skeleton">—</div></article>
+          </div>
+          <div class="split-panels">
+            <div class="panel"><div class="panel-head"><div><span class="eyebrow">ATIVOS BRASILEIROS</span><h3>Preços de mercado</h3></div><button class="text-link" data-go="market">Ver todos →</button></div><div class="table-wrap"><table><thead><tr><th>ATIVO</th><th>PREÇO</th><th>VARIAÇÃO</th></tr></thead><tbody id="overview-stocks"><tr><td colspan="3">Consultando a brapi...</td></tr></tbody></table></div></div>
+            <div class="panel insight-panel"><div class="panel-head"><div><span class="eyebrow">ESTRATÉGIAS</span><h3>Laboratório de investimentos</h3></div><span class="lab-badge">PESQUISA</span></div><div class="insight-number">05<span> estratégias</span></div><p>Explore modelos educacionais inspirados em Bogle, Buffett, Graham, Dalio e alocação multiclasse. Sem promessas de rendimento.</p><button class="button primary" data-go="strategies">Explorar estratégias →</button><p class="micro-note">Modelos didáticos; não equivalem às carteiras reais dos investidores.</p></div>
+          </div>
+          <div id="notice" class="notice" role="status"><span>ℹ</span><span>As cotações são solicitadas aos provedores em tempo de execução. Nenhum valor de mercado será inventado se uma API estiver indisponível.</span></div>
+        </section>
+        <section id="view-market" class="view">
+          <div class="page-title"><div class="eyebrow">COTAÇÕES E ATIVOS</div><h1>Radar de mercado</h1><p>Preços reais disponíveis por API, separados por provedor, moeda e data de referência.</p></div>
+          <div class="toolbar"><div class="segmented" id="market-filter" aria-label="Filtrar mercado"><button class="selected" data-filter="all">Todos</button><button data-filter="BR">Brasil</button><button data-filter="US">Estados Unidos</button><button data-filter="CRYPTO">Cripto</button></div><span class="muted small-text" id="market-count">Aguardando cotações</span></div>
+          <div class="panel"><div class="table-wrap"><table><thead><tr><th>ATIVO</th><th>MERCADO</th><th>COTAÇÃO</th><th>VARIAÇÃO</th><th>FONTE</th><th>REFERÊNCIA</th></tr></thead><tbody id="market-table"><tr><td colspan="6">Consultando as fontes...</td></tr></tbody></table></div></div>
+          <div class="panel section-gap market-explorer"><div class="panel-head"><div><span class="eyebrow">EXPLORADOR / PREÇOS REAIS</span><h3>Consultar ativo</h3></div><span class="pill-muted">BRAPI · TWELVE DATA</span></div><form id="lookup-form" class="lookup-form"><label>Mercado<select id="lookup-market"><option value="BR">Brasil</option><option value="US">Estados Unidos</option></select></label><label>Código do ativo<input id="lookup-symbol" placeholder="Ex.: PETR4" required maxlength="8" autocomplete="off" /></label><button class="button outline" type="submit">Buscar cotação →</button></form><p class="micro-note">Ativos além dos quatro brasileiros de teste exigem chave da brapi. Ativos americanos exigem chave Twelve Data. O uso é limitado pelas condições do plano.</p><div id="lookup-result" role="status"></div></div>
+          <div class="panel section-gap"><div class="panel-head"><div><span class="eyebrow">HISTÓRICO DE MERCADO</span><h3>Gráfico com dados do provedor</h3></div><span class="lab-badge">DADOS REAIS</span></div><form id="history-form" class="lookup-form"><label>Ativo<select id="history-symbol"><option value="BR:PETR4">PETR4 · Petrobras</option><option value="BR:VALE3">VALE3 · Vale</option><option value="BR:ITUB4">ITUB4 · Itaú</option><option value="BR:MGLU3">MGLU3 · Magalu</option><option value="US:VOO">VOO · ETF</option><option value="US:QQQ">QQQ · ETF</option><option value="US:AAPL">AAPL · Apple</option><option value="CRYPTO:BTC">BTC · Bitcoin</option><option value="CRYPTO:ETH">ETH · Ethereum</option><option value="CRYPTO:SOL">SOL · Solana</option></select></label><label>Período<select id="history-range"><option value="1mo">1 mês</option><option value="3mo">3 meses</option></select></label><button class="button primary" id="history-submit" type="submit">Carregar histórico</button></form><div id="history-status" role="status" class="micro-note">Escolha um ativo e consulte sua série real.</div><div class="history-chart" id="history-chart" aria-label="Histórico de preços reais"></div><div class="chart-foot" id="history-foot"></div><p class="micro-note">A série histórica pode ter limitação pelo plano contratado. Fechamento ajustado é usado quando disponível; séries não ajustadas não representam retorno total.</p></div>
+          <div id="market-warnings" class="warnings"></div>
+        </section>
+        <section id="view-portfolio" class="view">
+          <div class="page-title"><div class="eyebrow">PATRIMÔNIO / CONTROLE LOCAL</div><h1>Minha carteira</h1><p>Registre compras e vendas em seu navegador. Valores atuais são calculados somente com cotações realmente disponíveis.</p></div>
+          <div class="portfolio-summary"><div class="metric-card"><div class="metric-title">PATRIMÔNIO PRECIFICADO</div><div class="metric-value" id="portfolio-value">—</div><div class="metric-foot">Total disponível apenas se cobertura integral</div></div><div class="metric-card"><div class="metric-title">CUSTO DAS POSIÇÕES</div><div class="metric-value" id="portfolio-cost">R$ 0,00</div><div class="metric-foot">Custo histórico em BRL</div></div><div class="metric-card"><div class="metric-title">RESULTADO NÃO REALIZADO</div><div class="metric-value" id="portfolio-pnl">—</div><div class="metric-foot" id="portfolio-coverage">Nenhuma operação</div></div><div class="metric-card"><div class="metric-title">RESULTADO REALIZADO</div><div class="metric-value" id="portfolio-realized">R$ 0,00</div><div class="metric-foot">Vendas menos custo médio e taxas</div></div><div class="metric-card"><div class="metric-title">PROVENTOS RECEBIDOS</div><div class="metric-value" id="portfolio-income">R$ 0,00</div><div class="metric-foot">Lançados manualmente, líquidos de taxas</div></div><div class="metric-card"><div class="metric-title">XIRR ANUALIZADA</div><div class="metric-value" id="portfolio-xirr">—</div><div class="metric-foot">Retorno ponderado pelos fluxos; exige preços completos</div></div></div>
+          <div class="split-panels portfolio-panels">
+            <div class="panel"><div class="panel-head"><div><span class="eyebrow">HISTÓRICO</span><h3>Posições atuais</h3></div><div class="inline-actions"><button class="text-link" id="export-data" type="button">Exportar backup ↓</button><label class="text-link import-button" for="import-data">Importar backup ↑</label><input id="import-data" type="file" accept=".json,application/json" hidden /></div></div><div class="table-wrap"><table><thead><tr><th>ATIVO</th><th>QTD.</th><th>CUSTO EM R$</th><th>VALOR EM R$</th></tr></thead><tbody id="portfolio-table"><tr><td colspan="4">Nenhuma posição cadastrada.</td></tr></tbody></table></div><p class="micro-note" id="portfolio-msg">Dados locais não são enviados ao servidor. Exporte backups regularmente.</p></div>
+            <div class="panel form-panel"><div class="panel-head"><div><span class="eyebrow">LANÇAMENTO MANUAL</span><h3>Registrar operação</h3></div></div><form id="transaction-form" novalidate>
+              <div class="form-grid"><label>Ativo<select id="tx-symbol" required><option value="PETR4">PETR4 · Petrobras</option><option value="VALE3">VALE3 · Vale</option><option value="ITUB4">ITUB4 · Itaú</option><option value="MGLU3">MGLU3 · Magalu</option><option value="VOO">VOO · ETF S&P 500</option><option value="QQQ">QQQ · Nasdaq 100</option><option value="AAPL">AAPL · Apple</option><option value="BTC">BTC · Bitcoin</option><option value="ETH">ETH · Ethereum</option><option value="SOL">SOL · Solana</option></select></label><label>Operação<select id="tx-side"><option value="buy">Compra</option><option value="sell">Venda</option><option value="income">Dividendo / provento</option></select></label></div>
+              <div class="form-grid"><label id="qty-wrapper">Quantidade<input id="tx-qty" type="number" min="0.00000001" step="any" required placeholder="0,00" /></label><label><span id="tx-price-label">Preço unitário</span><input id="tx-price" type="number" min="0.00000001" step="any" required placeholder="0,00" /></label></div>
+              <div class="form-grid"><label>Data<input id="tx-date" type="date" required /></label><label>Câmbio histórico (R$/moeda)<input id="tx-fx" type="number" min="0.000001" step="any" value="1" required /></label></div><div class="form-grid"><label>Taxas / corretagem (na moeda do ativo)<input id="tx-fee" type="number" min="0" step="any" value="0" /></label></div><p class="micro-note" id="tx-currency-info">Ações brasileiras e cripto: preço em BRL. Ativos americanos: USD e câmbio da data da operação.</p><button class="button primary full" type="submit">+ Salvar operação</button><p id="transaction-feedback" class="form-feedback" role="status"></p>
+            </form></div>
+          </div>
+          <div class="panel section-gap"><div class="panel-head"><h3>Operações registradas</h3><button class="text-link danger" id="clear-portfolio" type="button">Limpar registros</button></div><div class="table-wrap"><table><thead><tr><th>DATA</th><th>TIPO</th><th>ATIVO</th><th>QUANTIDADE</th><th>PREÇO</th><th>AÇÃO</th></tr></thead><tbody id="transactions-table"><tr><td colspan="6">Nenhuma operação.</td></tr></tbody></table></div></div>
+        </section>
+        <section id="view-strategies" class="view">
+          <div class="page-title"><div class="eyebrow">RESEARCH LAB / ESTUDO</div><h1>Laboratório de estratégias</h1><p>Metodologias conhecidas transformadas em carteiras-modelo didáticas. As alocações abaixo são propostas nossas.</p></div>
+          <div id="strategies-grid" class="strategy-grid"></div>
+          <div class="panel section-gap"><div class="panel-head"><div><span class="eyebrow">SIMULAÇÃO HIPOTÉTICA</span><h3>Juros compostos & aportes</h3></div><span class="lab-badge">NÃO É PREVISÃO</span></div><form id="sim-form" class="sim-controls"><label>Capital inicial (R$)<input id="sim-initial" type="number" min="0" value="10000" step="100" /></label><label>Aporte mensal (R$)<input id="sim-monthly" type="number" min="0" value="300" step="50" /></label><label>Taxa anual hipotética (%)<input id="sim-rate" type="number" min="-95" max="200" value="8" step="0.5" /></label><label>Horizonte (anos)<input id="sim-years" type="number" min="1" max="40" value="10" step="1" /></label><button class="button primary" type="submit">Simular</button></form><div id="sim-result" class="sim-result"></div><div id="sim-chart" class="sim-chart" aria-label="Gráfico de projeção hipotética"></div><p class="micro-note">Projeção nominal, com aportes ao fim de cada mês, sem impostos, inflação, custos, câmbio ou garantia de rentabilidade. Não representa desempenho passado de nenhuma estratégia.</p></div>
+        </section>
+        <section id="view-about" class="view">
+          <div class="page-title"><div class="eyebrow">ENGENHARIA & TRANSPARÊNCIA</div><h1>Conexões de mercado</h1><p>O backend consulta os fornecedores, protege as chaves e identifica falhas em vez de criar números fictícios.</p></div>
+          <div id="provider-grid" class="provider-grid"></div>
+          <div class="panel section-gap"><h3>Política de dados e privacidade</h3><p>Os ativos, transações e custos lançados em Minha Carteira ficam somente no armazenamento local deste navegador. Não existe sincronização entre dispositivos, login ou conexão com contas da Picnic e do Nubank nesta versão. O site não calcula impostos ou rentabilidade líquida tributária automaticamente. Não coloque senhas, tokens, dados bancários ou documentos pessoais nos lançamentos.</p><p>As cotações podem ser de fechamento, com atraso, ou sujeitas à licença de redistribuição. Cada fonte tem condições de uso próprias. A VEZORI é uma plataforma de pesquisa e educação financeira. Não executa ordens nem recomenda investimentos individualizados.</p></div>
+        </section>
+      </main>
+      <footer class="footer"><span>VEZORI <b>·</b> v1.0</span><span>Pesquise. Compare. Decida com contexto.</span><span id="last-sync">Aguardando atualização</span></footer>
+    </div>
+  </div>
+</body>
+</html>
