@@ -13,6 +13,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/apex.css?v=13" />
   <link rel="stylesheet" href="/research.css?v=20" />
+  <link rel="stylesheet" href="/home.css?v=21" />
   <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
   <script type="module" src="/app.js"></script>
 </head>
@@ -26,28 +27,70 @@
       </a>
       <div class="workspace-label">PLATAFORMA <span>01 / 07</span></div>
       <nav id="menu" class="nav-links" aria-label="Módulos">
-        <button class="nav active" data-view="overview" type="button"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg> Visão geral</button>
-        <button class="nav" data-view="market" type="button"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 8-9"/><path d="M15 6h6v6"/></svg> Explorar ativos</button>
-        <button class="nav" data-view="asset" type="button"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg> Ficha do ativo</button>
+        <button class="nav active" data-view="overview" type="button"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg> Mercados</button>
+        <button class="nav" data-view="market" type="button"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l6-6 4 4 8-9"/><path d="M15 6h6v6"/></svg> Pesquisa avançada</button>
+        
         <button class="nav" data-view="compare" type="button"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4v16m0-5h6l4-7 4 5h4"/><path d="M8 4v4m8 11v2"/></svg> Comparador</button>
-        <button class="nav" data-view="portfolio" type="button"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="14" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18"/></svg> Minha carteira</button>
+        <button class="nav" data-view="dashboard" type="button"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 15l4-4 3 2 3-5"/></svg> Minha carteira</button>
+        <button class="nav" data-view="portfolio" type="button"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="14" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18"/></svg> Movimentações</button>
         <button class="nav" data-view="strategies" type="button"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6M10 3v7L4 19a1.5 1.5 0 0 0 1.3 2h13.4A1.5 1.5 0 0 0 20 19l-6-9V3M8 15h8"/></svg> Laboratório</button>
         <button class="nav" data-view="about" type="button"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M17.5 13.5v8m-4-4h8"/></svg> Integrações</button>
       </nav>
       <div class="sidebar-bottom"><span class="sidebar-dot" aria-hidden="true"></span><div><strong>Fontes de mercado</strong><br/><small id="sidebar-source-status">Aguardando atualização</small></div></div>
-      <div class="sidebar-footnote"><span class="footnote-glyph" aria-hidden="true">V.</span><span>VEZORI <small>PLATAFORMA DE PESQUISA</small></span><span class="footnote-version">v2.0</span></div>
+      <div class="sidebar-footnote"><span class="footnote-glyph" aria-hidden="true">V.</span><span>VEZORI <small>PLATAFORMA DE PESQUISA</small></span><span class="footnote-version">v2.1</span></div>
     </aside>
     <div class="main-frame">
       <header class="topbar">
-        <div class="header-title"><span class="header-overline">PLATAFORMA <span aria-hidden="true">/</span> <strong id="breadcrumb">VISÃO GERAL</strong></span><h2 id="header-title">Visão geral</h2><p id="header-subtitle">Inteligência de mercado, carteira e estratégias em um só lugar.</p></div>
+        <div class="header-title"><span class="header-overline">PLATAFORMA <span aria-hidden="true">/</span> <strong id="breadcrumb">VISÃO GERAL</strong></span><h2 id="header-title">Mercados</h2><p id="header-subtitle">Todos os ativos disponíveis para explorar sem precisar memorizar códigos.</p></div>
         <div class="header-utilities">
-          <form class="search-box" id="global-search-form" role="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg><input id="global-search" type="search" autocomplete="off" maxlength="8" placeholder="Buscar ticker (ex.: PETR4)" aria-label="Buscar um ativo pelo ticker" /><button class="search-submit" type="submit" aria-label="Buscar ativo">↵</button></form>
+          <form class="search-box" id="global-search-form" role="search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg><input id="global-search" type="search" autocomplete="off" maxlength="64" placeholder="Buscar empresa ou ticker…" aria-label="Buscar ativos por nome ou código" /><button class="search-submit" type="submit" aria-label="Buscar ativo">↵</button></form>
           <button class="button small primary refresh-button" id="refresh" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M5 9a8 8 0 0 1 13-3l2 6M4 12l2 6a8 8 0 0 0 13-3"/></svg> Atualizar cotações</button>
         </div>
         <span class="live-pill" id="api-status" role="status"><span class="dot pulse"></span> Conectando às fontes...</span>
       </header>
       <main id="page-content" class="content">
-        <section id="view-overview" class="view active apex-dashboard" aria-label="Painel da carteira">
+        <section id="view-overview" class="view active market-home" aria-label="Mercados e ativos disponíveis">
+          <div class="home-head">
+            <div class="home-heading">
+              <div class="home-eyebrow">VEZORI / MERCADOS</div>
+              <h1>Encontre seu próximo investimento.</h1>
+              <p>Explore ações brasileiras, ativos internacionais e criptomoedas. Selecione qualquer ativo para abrir a análise.</p>
+            </div>
+            <div class="home-head-aside">
+              <span class="home-status" id="home-status" aria-live="polite">Consultando fontes de mercado…</span>
+              <span class="home-sync" id="home-updated">Aguardando atualização</span>
+            </div>
+          </div>
+          <div class="home-indicators" id="home-indicators" aria-label="Indicadores de referência">
+            <div class="home-indicator"><span>Câmbio USD / BRL</span><strong>—</strong><small>Consultando</small></div>
+            <div class="home-indicator"><span>Câmbio EUR / BRL</span><strong>—</strong><small>Consultando</small></div>
+            <div class="home-indicator"><span>Meta Selic</span><strong>—</strong><small>Consultando</small></div>
+          </div>
+          <div class="home-catalog-heading">
+            <div><h2>Ativos disponíveis para pesquisa</h2><p>Todos os ativos atualmente catalogados na VEZORI, inclusive os que ainda não têm cotação nesta consulta.</p></div>
+            <span id="home-catalog-total" aria-live="polite">Carregando universo de ativos…</span>
+          </div>
+          <div class="home-toolbar">
+            <label class="home-search-field"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m16 16 4 4"></path></svg>
+              <span class="sr-only">Pesquisar ativos pelo nome ou ticker</span><input id="home-search" type="search" placeholder="Buscar por nome ou código, por exemplo: Bitcoin, Petrobras…" autocomplete="off" />
+            </label>
+            <div class="home-filters" id="home-filters" role="group" aria-label="Filtrar mercado">
+              <button type="button" data-home-filter="all" aria-pressed="true" class="active">Todos</button>
+              <button type="button" data-home-filter="BR" aria-pressed="false">Ações Brasil</button>
+              <button type="button" data-home-filter="US" aria-pressed="false">Exterior / ETFs</button>
+              <button type="button" data-home-filter="CRYPTO" aria-pressed="false">Criptomoedas</button>
+            </div>
+            <label class="home-sort-label">Ordenar <select id="home-sort" aria-label="Ordenar ativos"><option value="symbol">Código</option><option value="name">Nome</option><option value="up">Maiores altas</option><option value="down">Maiores quedas</option></select></label>
+          </div>
+          <div id="home-groups" class="home-groups" aria-live="polite">
+            <div class="home-empty">Preparando a lista de ativos…</div>
+          </div>
+          <div class="home-bottom">
+            <p>Preços e variações são fornecidos pelas APIs identificadas em cada linha. Podem existir atrasos, restrições do plano e dados indisponíveis. Não apresentamos cotações simuladas.</p>
+            <button type="button" data-home-advanced class="home-advanced">Abrir pesquisa avançada <span aria-hidden="true">→</span></button>
+          </div>
+        </section>
+        <section id="view-dashboard" class="view apex-dashboard" aria-label="Painel da carteira">
           <div class="apex-welcome">
             <div><p class="apex-overline">PAINEL FINANCEIRO / VEZORI</p><h1>Visão consolidada</h1><p>Acompanhe suas posições registradas e os indicadores disponíveis nas fontes de mercado.</p></div>
             <div class="apex-welcome-actions"><button class="button primary" id="apex-new-asset" type="button">＋ Nova operação</button><div class="apex-data-fresh"><span class="apex-signal"></span><span id="hero-count">—</span> ativos disponíveis <span id="hero-time">Aguardando dados</span></div></div>
@@ -152,7 +195,7 @@
           <div class="panel section-gap"><h3>Política de dados e privacidade</h3><p>Os ativos, transações e custos lançados em Minha Carteira ficam somente no armazenamento local deste navegador. Não existe sincronização entre dispositivos, login ou conexão com contas da Picnic e do Nubank nesta versão. O site não calcula impostos ou rentabilidade líquida tributária automaticamente. Não coloque senhas, tokens, dados bancários ou documentos pessoais nos lançamentos.</p><p>As cotações podem ser de fechamento, com atraso, ou sujeitas à licença de redistribuição. Cada fonte tem condições de uso próprias. A VEZORI é uma plataforma de pesquisa e educação financeira. Não executa ordens nem recomenda investimentos individualizados.</p></div>
         </section>
       </main>
-      <footer class="footer"><span>VEZORI <b>·</b> v2.0</span><span>Preços e indicadores sujeitos às condições dos provedores.</span><span id="last-sync">Aguardando atualização</span></footer>
+      <footer class="footer"><span>VEZORI <b>·</b> v2.1</span><span>Preços e indicadores sujeitos às condições dos provedores.</span><span id="last-sync">Aguardando atualização</span></footer>
     </div>
   </div>
 </body>

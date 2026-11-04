@@ -56,7 +56,7 @@ export function explorationRows(data={},opts={}){
 
 export function createResearchTools({state,navigate,getJson}){
  let search='',market='all',sort='availability',selected='PETR4',period='1mo',comparePeriod='1mo';
- const members=new Set(['PETR4','VALE3']);
+ const members=new Set();
  const historyCache=new Map();
  let detailChart=null,comparisonChart=null,detailRequest=0,compareRequest=0;
  const supported=s=>Object.hasOwn(ASSETS,s);
@@ -197,7 +197,7 @@ export function createResearchTools({state,navigate,getJson}){
   $('research-asset-symbol').addEventListener('change',event=>selectAsset(event.target.value));
   $('research-asset-period').addEventListener('change',event=>{period=event.target.value;renderDetail();});
   $('research-asset-add-compare').addEventListener('click',()=>{addCompare(selected);navigate('compare');});
-  $('research-asset-back').addEventListener('click',()=>navigate('market'));
+  $('research-asset-back').addEventListener('click',()=>navigate('overview'));
   $('research-compare-selection').addEventListener('click',event=>{const chip=event.target.closest('[data-research-remove]');if(chip){members.delete(chip.dataset.researchRemove);renderSelected();}});
   $('research-compare-add').addEventListener('change',event=>{if(event.target.value)addCompare(event.target.value);});
   $('research-compare-period').addEventListener('change',event=>{comparePeriod=event.target.value;});

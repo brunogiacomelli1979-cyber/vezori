@@ -41,7 +41,8 @@ test('sem cartela ficticia, sem dados de mercado fixos no HTML e com layout resp
 });
 
 test('layout Apex integrado com dados reais e módulos anteriores',()=>{
- assert.match(html,/class="view active apex-dashboard"/);
+ assert.match(html,/id="view-overview" class="view active market-home"/);
+ assert.match(html,/id="view-dashboard" class="view apex-dashboard"/);
  assert.match(html,/Visão consolidada/);
  assert.match(html,/apex\.css/);
  assert.match(app,/createApexDashboard\(\{state,save,portfolioView,navigate\}\)/);
@@ -49,10 +50,11 @@ test('layout Apex integrado com dados reais e módulos anteriores',()=>{
 });
 
 test('VEZORI 2.0 mantém módulos e conecta exploração e comparação',()=>{
- for(const name of ['overview','market','asset','compare','portfolio','strategies','about']){
+ for(const name of ['overview','dashboard','market','compare','portfolio','strategies','about']){
   assert.ok(html.includes('id="view-'+name+'"'));
   assert.ok(html.includes('data-view="'+name+'"'));
  }
+ assert.ok(html.includes('id="view-asset"'));
  assert.match(html,/research\.css\?v=20/);
  assert.match(app,/createResearchTools/);
  assert.match(app,/researchTools\?\.onNavigate\(view\)/);
