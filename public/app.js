@@ -2,6 +2,7 @@ import {ASSETS,KEY,STRATEGIES,validateTransaction,book,portfolio,portfolioXirr,p
 import {createApexDashboard} from './apex-ui.js';
 import {createResearchTools} from './research.js';
 import {createMarketHome} from './home.js';
+import {createLabBuilder} from './lab.js';
 
 const $=id=>document.getElementById(id);
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -14,6 +15,7 @@ const state={data:null,transactions:[],active:'overview',filter:'all'};
 let apexUI=null;
 let researchTools=null;
 let marketHome=null;
+let labBuilder=null;
 const save=()=>localStorage.setItem(KEY,JSON.stringify({version:3,brand:'VEZORI',savedAt:new Date().toISOString(),transactions:state.transactions}));
 function restore(){
  try{
@@ -134,7 +136,7 @@ function portfolioView(){
 }
 function strategiesView(){
  const colors=['#29c7ae','#378cb5','#e5b96a','#ae8bdb'];
- $('strategies-grid').innerHTML=STRATEGIES.map((s,i)=>`<article class="strategy-card"><div class="strategy-header"><span class="strategy-index">${String(i+1).padStart(2,'0')}</span><div><h3>${esc(s.title)}</h3><span class="strategy-by">${esc(s.by)}</span></div></div><p>${esc(s.desc)}</p><div class="allocation-bar">${s.allocation.map((a,k)=>`<span style="width:${a[1]}%;background:${colors[k]}"></span>`).join('')}</div><div class="allocation-legend">${s.allocation.map((a,k)=>`<span><i style="background:${colors[k]}"></i>${esc(a[0])} ${a[1]}%</span>`).join('')}</div><div class="strategy-note">Revisão sugerida: ${esc(s.review)}</div></article>`).join('');
+ $('strategies-grid').innerHTML=STRATEGIES.map((s,i)=>`<article class="strategy-card"><div class="strategy-header"><span class="strategy-index">${String(i+1).padStart(2,'0')}</span><div><h3>${esc(s.title)}</h3><span class="strategy-by">${esc(s.by)}</span></div></div><p>${esc(s.desc)}</p><div class="allocation-bar">${s.allocation.map((a,k)=>`<span style="width:${a[1]}%;background:${colors[k]}"></span>`).join('')}</div><div class="allocation-legend">${s.allocation.map((a,k)=>`<span><i style="background:${colors[k]}"></i>${esc(a[0])} ${a[1]}%</span>`).join('')}</div><div class="strategy-note">Revisão sugerida: ${esc(s.review)}</div><button type="button" class="lab-use-model" data-lab-template="${i}" aria-pressed="${i===0}">Montar carteira com este modelo →</button></article>`).join('');
 }
 function simulationView(){
  try{
@@ -156,6 +158,7 @@ function navigate(view){
  if($('header-subtitle'))$('header-subtitle').textContent=titles[view][1];
  researchTools?.onNavigate(view);
  if(view==='dashboard')apexUI?.render();
+ if(view==='strategies')labBuilder?.refreshQuotes();
  window.scrollTo({top:0,behavior:'instant'});
 }
 async function getJson(url){
@@ -173,7 +176,7 @@ async function refresh(){
   const n=d.quotes.length+d.fx.length+d.macro.length;
   $('api-status').innerHTML=`<span class="dot"></span> ${n} dados reais recebidos`;
   if(!n){$('api-status').classList.add('error');$('api-status').textContent='Fontes indisponíveis';}
-  dashboardView();marketView();portfolioView();providerView();researchTools?.refresh();marketHome?.render();
+  dashboardView();marketView();portfolioView();providerView();researchTools?.refresh();marketHome?.render();labBuilder?.refreshQuotes();
  }catch(e){$('api-status').classList.add('error');$('api-status').textContent='Falha de conexão';$('notice').innerHTML=`<span>⚠</span><span>O backend não respondeu: ${esc(e.message)}. Nenhum dado fictício foi usado.</span>`;portfolioView();}
  finally{$('refresh').disabled=false;$('refresh').innerHTML=refreshLabel;}
 }
@@ -251,7 +254,7 @@ function init(){
  marketHome=createMarketHome({state,navigate,selectAsset:symbol=>researchTools.selectAsset(symbol),getJson,registerCatalog:rows=>researchTools.registerCatalog(rows)});marketHome.mount();
  document.querySelectorAll('[data-view]').forEach(x=>x.addEventListener('click',()=>navigate(x.dataset.view)));
  document.querySelectorAll('[data-go]').forEach(x=>x.addEventListener('click',()=>navigate(x.dataset.go)));
- $('overview-strategies').addEventListener('click',event=>{if(event.target.closest('[data-strategy]'))navigate('strategies');});
+ $('overview-strategies').addEventListener('click',event=>{const trigger=event.target.closest('[data-strategy]');if(trigger){navigate('strategies');labBuilder?.selectModel(Number(trigger.dataset.strategy));}});
  $('overview-portfolio').addEventListener('click',event=>{if(event.target.closest('[data-overview-portfolio]'))navigate('portfolio');});
  $('global-search-form').addEventListener('submit',event=>{
   event.preventDefault();
@@ -277,6 +280,6 @@ function init(){
  });
  $('sim-form').addEventListener('submit',event=>{event.preventDefault();simulationView();});
  $('lookup-form').addEventListener('submit',lookup);$('history-form').addEventListener('submit',history);
- overviewStrategyPreview();strategiesView();simulationView();portfolioView();changeOperationUI();refresh();
+ overviewStrategyPreview();strategiesView();labBuilder=createLabBuilder({state});labBuilder.mount();simulationView();portfolioView();changeOperationUI();refresh();
 }
 init();

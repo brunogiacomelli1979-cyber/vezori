@@ -59,3 +59,14 @@ test('VEZORI 2.0 mantém módulos e conecta exploração e comparação',()=>{
  assert.match(app,/createResearchTools/);
  assert.match(app,/researchTools\?\.onNavigate\(view\)/);
 });
+
+test('o Laboratório agrega composição por estratégia sem alterar a home de mercados',()=>{
+ for(const id of ['lab-builder','lab-model','lab-rows','lab-weights','lab-alternatives','lab-add-asset','lab-run','lab-result-summary','lab-result-chart'])assert.ok(html.includes('id="'+id+'"'));
+ assert.match(html,/lab\.css\?v=23/);
+ assert.match(app,/createLabBuilder\(\{state\}\)/);
+ assert.match(app,/labBuilder\.mount\(\)/);
+ assert.match(app,/data-lab-template/);
+ assert.match(html,/id="view-overview" class="view active market-home"/);
+ assert.match(html,/id="view-strategies" class="view"/);
+ assert.match(html,/id="sim-form"/);
+});

@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="/apex.css?v=13" />
   <link rel="stylesheet" href="/research.css?v=20" />
   <link rel="stylesheet" href="/home.css?v=22" />
+  <link rel="stylesheet" href="/lab.css?v=23" />
   <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
   <script type="module" src="/app.js"></script>
 </head>
@@ -37,7 +38,7 @@
         <button class="nav" data-view="about" type="button"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M17.5 13.5v8m-4-4h8"/></svg> Integrações</button>
       </nav>
       <div class="sidebar-bottom"><span class="sidebar-dot" aria-hidden="true"></span><div><strong>Fontes de mercado</strong><br/><small id="sidebar-source-status">Aguardando atualização</small></div></div>
-      <div class="sidebar-footnote"><span class="footnote-glyph" aria-hidden="true">V.</span><span>VEZORI <small>PLATAFORMA DE PESQUISA</small></span><span class="footnote-version">v2.2</span></div>
+      <div class="sidebar-footnote"><span class="footnote-glyph" aria-hidden="true">V.</span><span>VEZORI <small>PLATAFORMA DE PESQUISA</small></span><span class="footnote-version">v2.3</span></div>
     </aside>
     <div class="main-frame">
       <header class="topbar">
@@ -185,9 +186,58 @@
           <div class="panel section-gap"><div class="panel-head"><h3>Operações registradas</h3><button class="text-link danger" id="clear-portfolio" type="button">Limpar registros</button></div><div class="table-wrap"><table><thead><tr><th>DATA</th><th>TIPO</th><th>ATIVO</th><th>QUANTIDADE</th><th>PREÇO</th><th>AÇÃO</th></tr></thead><tbody id="transactions-table"><tr><td colspan="6">Nenhuma operação.</td></tr></tbody></table></div></div>
         </section>
         <section id="view-strategies" class="view">
-          <div class="page-title"><div class="eyebrow">RESEARCH LAB / ESTUDO</div><h1>Laboratório de estratégias</h1><p>Metodologias conhecidas transformadas em carteiras-modelo didáticas. As alocações abaixo são propostas nossas.</p></div>
+          <div class="page-title"><div class="eyebrow">RESEARCH LAB / ESTUDO</div><h1>Laboratório de estratégias</h1><p>Escolha um modelo, monte sua composição de ativos e experimente cenários hipotéticos com aportes. As sugestões são estudos, não recomendações.</p></div>
           <div id="strategies-grid" class="strategy-grid"></div>
-          <div class="panel section-gap"><div class="panel-head"><div><span class="eyebrow">SIMULAÇÃO HIPOTÉTICA</span><h3>Juros compostos & aportes</h3></div><span class="lab-badge">NÃO É PREVISÃO</span></div><form id="sim-form" class="sim-controls"><label>Capital inicial (R$)<input id="sim-initial" type="number" min="0" value="10000" step="100" /></label><label>Aporte mensal (R$)<input id="sim-monthly" type="number" min="0" value="300" step="50" /></label><label>Taxa anual hipotética (%)<input id="sim-rate" type="number" min="-95" max="200" value="8" step="0.5" /></label><label>Horizonte (anos)<input id="sim-years" type="number" min="1" max="40" value="10" step="1" /></label><button class="button primary" type="submit">Simular</button></form><div id="sim-result" class="sim-result"></div><div id="sim-chart" class="sim-chart" aria-label="Gráfico de projeção hipotética"></div><p class="micro-note">Projeção nominal, com aportes ao fim de cada mês, sem impostos, inflação, custos, câmbio ou garantia de rentabilidade. Não representa desempenho passado de nenhuma estratégia.</p></div>
+<div id="lab-builder" class="lab-builder" aria-label="Montar e simular carteira de estudo">
+  <div class="lab-builder-intro">
+    <div><span class="lab-kicker">CARTEIRA DE ESTUDO / CENÁRIOS</span><h2>Monte sua estratégia de investimentos</h2>
+      <p>Comece com uma composição sugerida, substitua ativos, ajuste pesos e explore o resultado de cenários matemáticos.</p></div>
+    <span class="lab-disclosure">Simulação educacional · sem ordens reais</span>
+  </div>
+  <div class="lab-model-controls">
+    <label class="lab-field">Estratégia de referência
+      <select id="lab-model" aria-label="Selecionar modelo de estratégia"></select>
+    </label>
+    <button id="lab-reset" type="button" class="lab-reset">Restaurar composição sugerida</button>
+  </div>
+  <p class="lab-model-caption" id="lab-model-caption"></p>
+  <div class="lab-strategy-context">
+    <div><strong>Por que esses ativos?</strong><p id="lab-preset-description"></p></div>
+    <div><strong>Limitação importante</strong><p id="lab-risk-note"></p></div>
+  </div>
+  <div class="lab-studio-grid">
+    <section class="lab-studio-panel" aria-label="Ativos e pesos da simulação">
+      <div class="lab-panel-head"><div><h3>Composição proposta</h3><p>Edite os pesos e as taxas anuais hipotéticas de cada ativo.</p></div><span id="lab-weights" class="lab-weight-state valid" aria-live="polite">100% / 100%</span></div>
+      <div class="lab-table-scroll"><table class="lab-positions-table"><thead><tr>
+        <th>Ativo / classe</th><th>Peso</th><th>Taxa hipotética a.a.</th><th><span class="lab-sr-only">Retirar</span></th>
+      </tr></thead><tbody id="lab-rows"></tbody></table></div>
+      <p class="lab-weight-foot" id="lab-weights-note" role="status">Pesos válidos para simulação.</p>
+      <div class="lab-add-tools">
+        <label>Adicionar outro ativo ou classe<select id="lab-add-asset"><option value="">Carregando catálogo…</option></select></label>
+        <button id="lab-add" type="button" class="lab-outline">Adicionar à simulação</button>
+      </div>
+      <div class="lab-alts"><strong>Alternativas para estudar</strong><div id="lab-alternatives" class="lab-alternative-chips"></div></div>
+      <div class="lab-rate-actions"><button id="lab-demo-rates" class="lab-link" type="button">Aplicar taxas de exemplo didático</button><button id="lab-zero-rates" class="lab-link" type="button">Zerar hipóteses de retorno</button></div>
+      <p id="lab-message" class="lab-muted">Os valores anuais são cenários que você escolhe, não estimativas.</p>
+    </section>
+    <section class="lab-studio-panel lab-calc-panel" aria-label="Parâmetros e resultado da simulação">
+      <div class="lab-panel-head"><div><h3>Simulação por carteira</h3><p>Aportes distribuídos entre os ativos segundo seus pesos.</p></div><span id="lab-status" class="lab-pill">Aguardando cálculo</span></div>
+      <div class="lab-scenario-fields">
+        <label>Capital inicial (R$)<input id="lab-initial" type="number" min="0" max="100000000" step="100" inputmode="decimal" value="10000" /></label>
+        <label>Aporte mensal (R$)<input id="lab-monthly" type="number" min="0" max="10000000" step="50" inputmode="decimal" value="300" /></label>
+        <label>Horizonte (anos)<input id="lab-years" type="number" min="1" max="40" step="1" value="10" /></label>
+      </div>
+      <button id="lab-run" class="lab-primary" type="button">Calcular cenário hipotético <span aria-hidden="true">→</span></button>
+      <p id="lab-error" class="lab-error" role="alert" aria-live="assertive"></p>
+      <div id="lab-result-summary" class="lab-result-grid" aria-live="polite"><p>Configure as premissas e clique em <strong>Calcular cenário</strong> para visualizar a projeção.</p></div>
+      <div id="lab-result-chart" class="lab-result-chart" aria-label="Gráfico da projeção hipotética"></div>
+      <div class="lab-result-table-wrap"><table class="lab-results-table"><thead><tr><th>Ativo</th><th>Peso inicial</th><th>Taxa a.a.</th><th>Valor hipotético</th><th>Peso final</th></tr></thead><tbody id="lab-result-holdings"></tbody></table></div>
+      <p class="lab-result-note" id="lab-result-note">Nenhum resultado calculado. Alterações nos pesos ou nas taxas invalidam o cenário anterior.</p>
+    </section>
+  </div>
+  <p class="lab-footer-note">Este laboratório não representa recomendação personalizada, retorno esperado, backtest ou previsão. Classificações como ouro, títulos e commodities são cenários de categoria sem ativo real selecionado. A cotação ao lado do ticker é informativa, não entra na conta. Sem rebalanceamento, imposto, taxa de administração, câmbio, inflação ou volatilidade.</p>
+</div>
+          <div class="panel section-gap"><div class="panel-head"><div><span class="eyebrow">SIMULAÇÃO HIPOTÉTICA</span><h3>Simulador rápido com taxa única</h3></div><span class="lab-badge">NÃO É PREVISÃO</span></div><form id="sim-form" class="sim-controls"><label>Capital inicial (R$)<input id="sim-initial" type="number" min="0" value="10000" step="100" /></label><label>Aporte mensal (R$)<input id="sim-monthly" type="number" min="0" value="300" step="50" /></label><label>Taxa anual hipotética (%)<input id="sim-rate" type="number" min="-95" max="200" value="8" step="0.5" /></label><label>Horizonte (anos)<input id="sim-years" type="number" min="1" max="40" value="10" step="1" /></label><button class="button primary" type="submit">Simular</button></form><div id="sim-result" class="sim-result"></div><div id="sim-chart" class="sim-chart" aria-label="Gráfico de projeção hipotética"></div><p class="micro-note">Projeção nominal, com aportes ao fim de cada mês, sem impostos, inflação, custos, câmbio ou garantia de rentabilidade. Não representa desempenho passado de nenhuma estratégia.</p></div>
         </section>
         <section id="view-about" class="view">
           <div class="page-title"><div class="eyebrow">ENGENHARIA & TRANSPARÊNCIA</div><h1>Conexões de mercado</h1><p>O backend consulta os fornecedores, protege as chaves e identifica falhas em vez de criar números fictícios.</p></div>
@@ -195,7 +245,7 @@
           <div class="panel section-gap"><h3>Política de dados e privacidade</h3><p>Os ativos, transações e custos lançados em Minha Carteira ficam somente no armazenamento local deste navegador. Não existe sincronização entre dispositivos, login ou conexão com contas da Picnic e do Nubank nesta versão. O site não calcula impostos ou rentabilidade líquida tributária automaticamente. Não coloque senhas, tokens, dados bancários ou documentos pessoais nos lançamentos.</p><p>As cotações podem ser de fechamento, com atraso, ou sujeitas à licença de redistribuição. Cada fonte tem condições de uso próprias. A VEZORI é uma plataforma de pesquisa e educação financeira. Não executa ordens nem recomenda investimentos individualizados.</p></div>
         </section>
       </main>
-      <footer class="footer"><span>VEZORI <b>·</b> v2.2</span><span>Preços e indicadores sujeitos às condições dos provedores.</span><span id="last-sync">Aguardando atualização</span></footer>
+      <footer class="footer"><span>VEZORI <b>·</b> v2.3</span><span>Preços e indicadores sujeitos às condições dos provedores.</span><span id="last-sync">Aguardando atualização</span></footer>
     </div>
   </div>
 </body>
