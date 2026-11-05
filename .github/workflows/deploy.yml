@@ -56,6 +56,7 @@ jobs:
           SITE_URL: https://vezori.bruno-giacomelli1979.workers.dev
         run: |
           node --input-type=module <<'NODE'
+          import {analyzeAssetRisk} from './public/risk-analytics.js';
           const root = process.env.SITE_URL;
           async function read(path) {
             const response = await fetch(root + path, {signal: AbortSignal.timeout(25000)});
@@ -79,6 +80,11 @@ jobs:
               const history = await historyResponse.json();
               if (history.symbol !== 'PETR4' || !Array.isArray(history.points) || history.points.some(p => !Number.isFinite(p.close) || p.close <= 0)) throw new Error('Historico PETR4 invalido');
               console.log('HISTORICO REAL PETR4:', history.points.length, 'fechamentos');
+              if (history.points.length > 30) {
+                const risk = analyzeAssetRisk(history);
+                if (!Number.isFinite(risk.maxDrawdownPct) || !Number.isFinite(risk.volatilityAnnualPct)) throw new Error('Metrica de risco inconsistente');
+                console.log('RISCO PETR4:', risk.observations, 'fechamentos, drawdown', risk.maxDrawdownPct, '% e volatilidade', risk.volatilityAnnualPct, '% aa');
+              }
             } else console.log('::warning::Historico de PETR4 nao disponivel no provedor durante o smoke: HTTP ' + historyResponse.status);
           } catch (err) {
             console.log('::warning::Nao foi possivel confirmar historico PETR4 agora: ' + err.message);
