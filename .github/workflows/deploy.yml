@@ -88,6 +88,14 @@ jobs:
           if (!Array.isArray(market.quotes) || !Array.isArray(market.errors)) throw new Error('Contrato de dashboard invalido');
           const validQuotes = market.quotes.filter(q => Number.isFinite(q.price) && q.price > 0 && q.provider);
           if (!html.includes('id="research-risk-metrics"') || !html.includes('id="lab-risk-study"') || !html.includes('id="lab-basket-result"')) throw new Error('Modulos de risco ausentes no HTML publicado');
+          if (!html.includes('id="research-price-zones"') || !html.includes('id="research-crypto-sentiment"')) throw new Error('Paineis de faixas e sentimento ausentes no HTML publicado');
+          const zonesJs=await fetch(root+'/price-zones.js',{signal:AbortSignal.timeout(15000)});
+          if(!zonesJs.ok || !(await zonesJs.text()).includes('suggestPriceZones'))throw new Error('Motor de faixas indicativas nao publicado');
+          const researchJs=await fetch(root+'/research.js',{signal:AbortSignal.timeout(15000)});
+          if(!researchJs.ok || !(await researchJs.text()).includes('suggestPriceZones'))throw new Error('Pesquisa nao integra o motor de faixas');
+          const sentiment=await fetch(root+'/api/crypto-sentiment',{signal:AbortSignal.timeout(15000)});
+          if(![200,422].includes(sentiment.status))throw new Error('Rota de sentimento cripto indisponivel: '+sentiment.status);
+
           const riskResponse = await fetch(root + '/risk-analytics.js', {signal: AbortSignal.timeout(15000)});
           if (!riskResponse.ok || !(await riskResponse.text()).includes('analyzeAssetRisk')) throw new Error('Modulo quantitativo indisponivel em producao');
           const basketResponse = await fetch(root + '/portfolio-risk.js', {signal: AbortSignal.timeout(15000)});
