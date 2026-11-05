@@ -1,0 +1,60 @@
+name: CVM — Extrair demonstrativos oficiais (manual)
+on:
+  workflow_dispatch:
+    inputs:
+      ticker:
+        description: Ticker após confirmação da relação ticker ↔ CNPJ
+        required: true
+        type: string
+      cnpj:
+        description: CNPJ oficial da companhia
+        required: true
+        type: string
+      year:
+        description: Ano do demonstrativo, ex. 2025
+        required: true
+        type: string
+        default: '2025'
+      kind:
+        description: Tipo de arquivo
+        required: true
+        type: choice
+        options: [DFP, ITR]
+        default: DFP
+      scope:
+        description: Escopo das contas
+        required: true
+        type: choice
+        options: [con, ind]
+        default: con
+permissions:
+  contents: read
+jobs:
+  cvm-extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      TICKER: ${{ inputs.ticker }}
+      CNPJ: ${{ inputs.cnpj }}
+      YEAR: ${{ inputs.year }}
+      KIND: ${{ inputs.kind }}
+      SCOPE: ${{ inputs.scope }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Testar extrator com demonstrações sintéticas
+        run: python -m unittest discover -s tests -p 'test_cvm_extract.py'
+      - name: Processar dados oficiais e rastrear revisão
+        run: |
+          mkdir -p out
+          python -m scripts.cvm_extract \
+            --ticker "$TICKER" --cnpj "$CNPJ" --year "$YEAR" \
+            --kind "$KIND" --scope "$SCOPE" --out "out/facts.json"
+      - name: Arquivar resultado para validação humana
+        uses: actions/upload-artifact@v4
+        with:
+          name: cvm-facts-${{ inputs.ticker }}-${{ inputs.year }}-${{ inputs.kind }}
+          path: out/facts.json
+          retention-days: 30
