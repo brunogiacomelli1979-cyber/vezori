@@ -4,6 +4,7 @@
  */
 import {ASSETS} from './finance.js';
 import {mountMarketChart} from './market-charts.js';
+import {analyzeAssetRisk} from './risk-analytics.js';
 
 const $=id=>document.getElementById(id);
 const esc=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -178,6 +179,8 @@ export function createResearchTools({state,navigate,getJson}){
   const request=++detailRequest;
   $('research-asset-history-status').textContent='Consultando série histórica no provedor…';
   $('research-asset-details').innerHTML='';
+  $('research-risk-metrics').innerHTML='';
+  $('research-risk-status').textContent='Aguardando histórico válido para estimar risco de preço…';
   const canvas=$('research-asset-chart');canvas.hidden=true;
   $('research-asset-lightweight').hidden=true;
   if(detailChart){detailChart.destroy();detailChart=null;}
@@ -192,9 +195,23 @@ export function createResearchTools({state,navigate,getJson}){
    $('research-asset-history-status').textContent=`${summary.count} observações · ${series.provider} · ${summary.first} a ${summary.last} · ${series.priceBasis}`;
    $('research-asset-details').innerHTML=`<div><span>Retorno de preço no período</span><strong class="${delta(summary.returnPct)}">${percent(summary.returnPct)}</strong></div><div><span>Menor fechamento</span><strong>${currency(summary.min,series.currency)}</strong></div><div><span>Maior fechamento</span><strong>${currency(summary.max,series.currency)}</strong></div><div><span>Último fechamento</span><strong>${currency(summary.lastClose,series.currency)}</strong></div>`;
    setChart('detail',points.map(p=>p.date),[{symbol:selected,values:points.map(p=>p.close)}]);
+   try{
+    const risk=analyzeAssetRisk(series);
+    const pct=value=>value===null?'—':num(value)+'%';
+    $('research-risk-metrics').innerHTML=
+     '<div><span>Drawdown máximo (preço)</span><strong>'+esc(pct(risk.maxDrawdownPct))+'</strong><small>Queda máxima desde um pico observado</small></div>'+
+     '<div><span>Volatilidade anualizada</span><strong>'+esc(pct(risk.volatilityAnnualPct))+'</strong><small>'+(risk.volatilityAnnualPct===null?'Mínimo: 30 retornos válidos':'Estimativa de retornos diários; '+risk.observationSessionsPerYear+' sessões/ano')+'</small></div>'+
+     '<div><span>Retorno de preço</span><strong class="'+delta(risk.returnPct)+'">'+esc(pct(risk.returnPct))+'</strong><small>Não inclui dividendos ou câmbio</small></div>'+
+     '<div><span>Observações</span><strong>'+risk.observations+'</strong><small>'+esc(risk.firstDate+' a '+risk.lastDate)+'</small></div>';
+    $('research-risk-status').textContent=risk.provider+' · '+risk.priceBasis+' · histórico de preços, não retorno total. Sharpe exige taxa livre de risco explícita, mesma moeda e amostra mínima; por isso não foi estimado automaticamente.';
+   }catch(error){
+    $('research-risk-metrics').innerHTML='';
+    $('research-risk-status').textContent='Risco histórico indisponível: '+error.message+'. Nenhum valor foi estimado.';
+   }
   }catch(err){
    if(request!==detailRequest)return;
    $('research-asset-history-status').textContent=`Histórico indisponível: ${err.message}`;
+   $('research-risk-status').textContent='Risco histórico indisponível sem fechamentos verificáveis.';
    $('research-asset-chart-fallback').hidden=false;
    $('research-asset-chart-fallback').textContent='Sem série verificável para o período. Não produzimos um gráfico artificial.';
   }

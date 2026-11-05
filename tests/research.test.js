@@ -43,3 +43,11 @@ test('UI oferece três novas jornadas e preserva cinco telas legadas',()=>{
  assert.match(app,/createResearchTools/);assert.match(app,/researchTools\?\.onNavigate/);
  assert.doesNotMatch(html,/Carteira demonstrativa|R\$\s*482\.736|R\$\s*443\.037/);
 });
+test('ficha exibe métricas de risco somente após histórico verificável',()=>{
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const research=readFileSync(new URL('../public/research.js',import.meta.url),'utf8');
+ assert.match(html,/id="research-risk-metrics"/);
+ assert.match(html,/id="research-risk-status"/);
+ assert.match(research,/analyzeAssetRisk\(series\)/);
+ assert.match(html,/pelo menos 30 retornos diários/);
+});
