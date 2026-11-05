@@ -266,6 +266,18 @@ export default {
     }catch(err){return fail(errorMessage(err),422);}
    });
   }
+  if(path==='/api/storage-status'){
+   if(!env.MARKET_SNAPSHOTS)return respond({status:'not_configured',persistent:false,latestSnapshot:null,archiveSample:null});
+   try{
+    const latest=await env.MARKET_SNAPSHOTS.get('vezori:market:latest','json');
+    const snapshot=latest?.schemaVersion===1&&latest?.captureDate&&latest?.data?.meta?.simulatedPrices===false?latest:null;
+    const sample=await readDailyObservations(env.MARKET_SNAPSHOTS,{market:'BR',symbol:'PETR4',months:1});
+    return respond({status:snapshot?'active':'configured_empty',persistent:true,
+     latestSnapshot:snapshot?{date:snapshot.captureDate,capturedAt:snapshot.capturedAt,pricedQuotes:snapshot.data.quotes?.length||0}:null,
+     archiveSample:{asset:'PETR4',status:sample.status,observations:sample.points.length,latestDate:sample.coverage?.actualLast||null},
+     note:'A ligação KV existe, mas ausência de snapshot ou observações não comprova captura automática operacional.'},200,300);
+   }catch(err){return respond({status:'storage_error',persistent:false,latestSnapshot:null,archiveSample:null,reason:errorMessage(err)},503);}
+  }
   if(path==='/api/health')return respond({service:'VEZORI',status:'ok',timestamp:now(),sourcesConfigured:{brapi:!!env.BRAPI_API_KEY,coingecko:!!env.COINGECKO_API_KEY,twelvedata:!!env.TWELVEDATA_API_KEY,usPublicDisplayAuthorized:env.US_PUBLIC_DISPLAY_AUTHORIZED==='true',secIdentified:!!env.SEC_USER_AGENT,marketSnapshotStorage:!!env.MARKET_SNAPSHOTS}});
 
   if(path==='/api/fundamentals'){
