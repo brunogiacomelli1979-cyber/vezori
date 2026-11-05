@@ -92,7 +92,7 @@ export function demoAnnualRate(symbol,metadata=assetMeta(symbol)){
 export function createLabBuilder({state}){
  const $=id=>document.getElementById(id);
  let active=0,drafts={},holdings=suggestedPortfolio(0),params={...LAB_DEFAULTS},initialized=false;
- const note='As taxas pré-preenchidas são exemplos arbitrários para exercício, NÃO expectativas de retorno. Você pode alterá-las ou zerá-las; cotações reais não entram no cálculo.';
+ const note='As taxas pré-preenchidas são exemplos arbitrários para exercício, NÃO expectativas de retorno. Você pode alterá-las ou zerá-las; as cotações reais não determinam o resultado matemático.';
  function liveMeta(symbol){return assetMeta(symbol,state.catalog||[]);}
  function latest(symbol){
   const q=(state.data?.quotes||[]).find(q=>q.symbol===symbol)||state.catalog?.find(q=>q.symbol===symbol);
