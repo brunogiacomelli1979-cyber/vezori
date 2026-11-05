@@ -165,7 +165,7 @@ export async function historyQuote(market,symbol,range,env={},fetcher=fetch){
  throw new Error('Mercado não suportado');
 }
 export async function buildDashboard(env={},fetcher=fetch){
- const out={mode:'real_market_data',generatedAt:now(),quotes:[],fx:[],macro:[],availability:{brapi:'available',frankfurter:'available',bcb:'available',coingecko:env.COINGECKO_API_KEY?'available':'public_no_key',twelvedata:!env.TWELVEDATA_API_KEY?'key_required':env.US_PUBLIC_DISPLAY_AUTHORIZED==='true'?'available':'display_rights_required'},errors:[],meta:{simulatedPrices:false,refreshSeconds:dailySnapshotCacheSeconds(),refreshPolicy:'snapshot diário em cache por região; captura sob demanda, não arquivo EOD garantido',reference:'Últimos preços disponíveis nas fontes, com possíveis atrasos; não é uma cotação em tempo real'}};
+ const out={mode:'real_market_data',generatedAt:now(),quotes:[],fx:[],macro:[],availability:{brapi:env.BRAPI_API_KEY?'available':'sandbox_only',frankfurter:'available',bcb:'available',coingecko:env.COINGECKO_API_KEY?'available':'public_no_key',twelvedata:!env.TWELVEDATA_API_KEY?'key_required':env.US_PUBLIC_DISPLAY_AUTHORIZED==='true'?'available':'display_rights_required'},errors:[],meta:{simulatedPrices:false,refreshSeconds:dailySnapshotCacheSeconds(),refreshPolicy:'snapshot diário em cache por região; captura sob demanda, não arquivo EOD garantido',reference:'Últimos preços disponíveis nas fontes, com possíveis atrasos; não é uma cotação em tempo real'}};
  const tasks=[];
  const add=(source,kind,run)=>tasks.push({source,kind,run});
  add('brapi','quotes',()=>brazilQuotes(BR_SYMBOLS,env,fetcher));
