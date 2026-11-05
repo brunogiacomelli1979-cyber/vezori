@@ -4,6 +4,7 @@
  */
 import {ASSETS,STRATEGIES} from './finance.js';
 import {analyzeAssetRisk} from './risk-analytics.js';
+import {analyzeHistoricalBasket} from './portfolio-risk.js';
 
 export const LAB_BUCKETS=Object.freeze({
   RF_SIM:{name:'Renda fixa / títulos · classe hipotética',currency:'BRL',market:'SIM',assetClass:'fixed',hypothetical:true},
@@ -184,6 +185,9 @@ export function createLabBuilder({state,getJson}){
  function invalidateRisk(message='Escolha até cinco ativos reais para consultar risco histórico.'){
   riskRequest++;
   $('lab-risk-rows').innerHTML='';
+  $('lab-basket-result').innerHTML='';
+  $('lab-basket-result').hidden=true;
+  $('lab-basket-message').textContent='';
   $('lab-risk-status').textContent=message;
  }
  function renderRiskOptions(){
@@ -206,7 +210,7 @@ export function createLabBuilder({state,getJson}){
     if(!meta||!['BR','US','CRYPTO'].includes(meta.market))throw Error('Mercado indisponível');
     const series=await getJson('/api/history?market='+meta.market+'&symbol='+encodeURIComponent(symbol)+'&range='+range);
     if(series.symbol!==symbol||series.market!==meta.market)throw Error('Contrato de série histórica inconsistente');
-    return analyzeAssetRisk(series);
+    return {risk:analyzeAssetRisk(series),series};
    }));
    if(request!==riskRequest)return;
    batch.forEach((out,j)=>reports.push({symbol:selection[i+j],out}));
@@ -220,7 +224,7 @@ export function createLabBuilder({state,getJson}){
     return '<tr><td><strong>'+esc(symbol)+'</strong><small>Indisponível</small></td><td colspan="4" class="lab-risk-unavailable">'+esc(message)+'</td></tr>';
    }
    successes++;
-   const risk=out.value;
+   const risk=out.value.risk;
    currencies.add(risk.currency);basis.add(risk.priceBasis);
    return '<tr><td><strong>'+esc(symbol)+'</strong><small>'+esc(risk.provider+' · '+risk.currency+' · '+risk.firstDate+' — '+risk.lastDate)+'</small></td>'+
     '<td class="'+(risk.returnPct<0?'lab-negative':'lab-positive')+'">'+esc(pct(risk.returnPct))+'</td>'+
@@ -233,6 +237,37 @@ export function createLabBuilder({state,getJson}){
   if(successes>0){
    $('lab-risk-status').textContent=successes+' de '+selection.length+' ativos com histórico suficiente para ao menos retorno e drawdown; '+(selection.length-successes)+' indisponíveis. '+comparisons.join(' ');
   }else $('lab-risk-status').textContent='Nenhum ativo selecionado retornou histórico diário verificável neste plano ou nesta consulta. Não foram criadas métricas artificiais.';
+  const note=$('lab-basket-message'),container=$('lab-basket-result');
+  if(selection.length<2){
+   note.textContent='Para avaliar uma cesta histórica, selecione pelo menos dois ativos reais da mesma moeda e mercado.';
+   return;
+  }
+  if(successes!==selection.length){
+   note.textContent='Cesta histórica não calculada: pelo menos um ativo não teve histórico verificável. Nenhuma posição foi excluída silenciosamente.';
+   return;
+  }
+  try{
+   const inputs=reports.map(({symbol,out})=>({
+    symbol,weight:holdings.find(row=>row.symbol===symbol)?.weight,series:out.value.series
+   }));
+   const basket=analyzeHistoricalBasket(inputs);
+   const percent=value=>value===null?'—':fmt(value)+'%';
+   const correlations=basket.correlations.map(pair=>
+    '<tr><td>'+esc(pair.a)+' / '+esc(pair.b)+'</td><td>'+esc(pair.coefficient===null?'Indisponível':fmt(pair.coefficient,3))+'</td></tr>'
+   ).join('');
+   container.innerHTML='<div class="lab-basket-head"><div><h4>Risco da cesta comparável</h4><p>'+esc(basket.market+' · '+basket.currency+' · '+basket.from+' a '+basket.to+' · '+basket.observations+' fechamentos coincidentes')+'</p></div><span class="lab-basket-tag">CENÁRIO HISTÓRICO</span></div>'+
+    '<div class="lab-basket-metrics">'+
+    '<div><span>Retorno de preços na amostra</span><strong class="'+(basket.returnPct<0?'lab-negative':'lab-positive')+'">'+esc(percent(basket.returnPct))+'</strong></div>'+
+    '<div><span>Maior drawdown</span><strong>'+esc(percent(basket.maxDrawdownPct))+'</strong></div>'+
+    '<div><span>Volatilidade anualizada</span><strong>'+esc(percent(basket.volatilityAnnualPct))+'</strong></div></div>'+
+    '<p class="lab-basket-weights">Os ativos selecionados representam '+esc(percent(basket.selectedOriginalWeightPct))+' da carteira proposta. Para calcular esta cesta, os pesos foram normalizados: '+basket.weights.map(row=>esc(row.symbol)+' '+esc(percent(row.normalizedWeightPct))).join(' · ')+'. Não foi incluída a parcela restante da carteira.</p>'+
+    '<details class="lab-basket-correlations"><summary>Ver correlações entre retornos diários</summary><table><thead><tr><th>Par de ativos</th><th>Correlação</th></tr></thead><tbody>'+correlations+'</tbody></table><p>Correlação histórica de preços, não garantia de diversificação. Coeficientes variam de −1 a +1.</p></details>'+
+    '<p class="lab-basket-method">Índice teórico base 100, com pesos constantes e rebalanceamento matemático diário. Não equivale a rentabilidade da carteira real ou backtest completo; não inclui custos, dividendos, impostos ou conversão cambial. Bases de ajustes corporativos não foram totalmente conciliadas.</p>';
+   container.hidden=false;
+   note.textContent='Cesta calculada sem interpolar fechamentos, sem descartar silenciosamente posições e sem misturar calendários.';
+  }catch(error){
+   note.textContent='Cesta comparável indisponível: '+String(error.message||'fontes incompatíveis')+'. As estatísticas individuais permanecem disponíveis.';
+  }
  }
 
  function renderSuggestions(){
@@ -339,7 +374,7 @@ export function createLabBuilder({state,getJson}){
    if(!holdings[index]||!['weight','rate'].includes(field))return;
    holdings[index][field]=input.value===''?NaN:Number(input.value);
    $('lab-assumption-ack').checked=false;
-   setError('');weightStatus();clearResult();
+   setError('');weightStatus();clearResult();invalidateRisk('A composição foi editada. Consulte novamente os históricos.');
   });
   $('lab-rows').addEventListener('change',()=>{save();renderHoldings();});
   $('lab-rows').addEventListener('click',e=>{

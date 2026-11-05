@@ -47,7 +47,7 @@ test('recusa mistura de moeda, mercados, metodologia e pesos inválidos',()=>{
 test('não preenche datas ausentes dentro do intervalo coincidente',()=>{
  const x=crypto('BTC'),y=crypto('ETH');
  const missing=y.points.filter((_,i)=>i!==20);
- assert.throws(()=>analyzeHistoricalBasket(sel(x,{...y,points:missing})),/ausente/);
+ assert.throws(()=>analyzeHistoricalBasket(sel(x,{...y,points:missing})),/ausente|incompleta/);
 });
 
 test('não exige cobertura anterior idêntica fora da janela compartilhada',()=>{

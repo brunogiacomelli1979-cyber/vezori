@@ -125,3 +125,12 @@ test('laboratório oferece análise histórica separada das taxas hipotéticas',
  assert.match(module,/analyzeAssetRisk\(series\)/);
  assert.match(app,/createLabBuilder\(\{state,getJson\}\)/);
 });
+
+test('cesta histórica aparece no Laboratório sem substituir o simulador nominal',()=>{
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const js=readFileSync(new URL('../public/lab.js',import.meta.url),'utf8');
+ for(const id of ['lab-basket-message','lab-basket-result','lab-result-summary','lab-result-chart'])
+  assert.match(html,new RegExp('id="'+id+'"'));
+ assert.match(js,/analyzeHistoricalBasket\(inputs\)/);
+ assert.match(html,/cesta histórica/);
+});

@@ -127,3 +127,24 @@
 .lab-risk-study .lab-positive{color:#45d2a4}
 .lab-risk-study .lab-negative{color:#ff8c94}
 @media(max-width:650px){.lab-risk-study>summary{padding:15px}.lab-risk-body{padding:4px 14px 16px}.lab-risk-controls{align-items:stretch}.lab-risk-controls button{flex:1}}
+
+/* Cesta retrospectiva validada — apenas para séries comparáveis, dentro da seção recolhida */
+.lab-basket-result[hidden]{display:none!important}
+.lab-basket-result{border:1px solid rgba(16,185,129,.3);border-radius:11px;padding:15px 16px;margin:16px 0;background:rgba(16,185,129,.045)}
+.lab-basket-head{display:flex;align-items:start;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.lab-basket-head h4{color:#eaf3f8;font-size:15px;font-weight:750;margin:0 0 6px}
+.lab-basket-head p{color:#99afc2;font-size:11px;margin:0;line-height:1.5}
+.lab-basket-tag{color:#8be3c5;border:1px solid rgba(16,185,129,.3);padding:5px 7px;border-radius:5px;font-size:9px;font-weight:700}
+.lab-basket-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:15px 0}
+.lab-basket-metrics>div{padding:12px 13px;background:#162739;border:1px solid rgba(148,163,184,.12);border-radius:8px}
+.lab-basket-metrics span{display:block;color:#a4bbcb;font-size:10px;line-height:1.45}
+.lab-basket-metrics strong{display:block;margin-top:6px;font-size:20px;letter-spacing:-.02em;color:#f0f8fb;font-variant-numeric:tabular-nums}
+.lab-basket-metrics strong.lab-positive{color:#41d1a6}
+.lab-basket-metrics strong.lab-negative{color:#ff8c94}
+.lab-basket-weights,.lab-basket-method{font-size:11px;color:#a1b5c5;line-height:1.7;margin:11px 0}
+.lab-basket-correlations{border-top:1px solid rgba(148,163,184,.2);padding-top:10px}
+.lab-basket-correlations summary{font-size:11px;font-weight:700;color:#83dbbd;cursor:pointer;padding:6px 0}
+.lab-basket-correlations table{margin-top:8px;width:100%;max-width:500px;border-collapse:collapse;font-size:11px;color:#d1e3ea}
+.lab-basket-correlations th,.lab-basket-correlations td{padding:8px;border-bottom:1px solid rgba(148,163,184,.16);text-align:left}
+.lab-basket-correlations p{color:#90aabd;font-size:10px;line-height:1.5}
+@media(max-width:700px){.lab-basket-metrics{grid-template-columns:1fr}.lab-basket-result{padding:12px}}

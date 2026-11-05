@@ -14,7 +14,7 @@
   <link rel="stylesheet" href="/apex.css?v=25" />
   <link rel="stylesheet" href="/research.css?v=26" />
   <link rel="stylesheet" href="/home.css?v=24" />
-  <link rel="stylesheet" href="/lab.css?v=27" />
+  <link rel="stylesheet" href="/lab.css?v=28" />
   <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/lightweight-charts@5.2.1/dist/lightweight-charts.standalone.production.js"></script>
   <script type="module" src="/app.js"></script>
@@ -268,6 +268,8 @@
    </div>
    <p id="lab-risk-status" class="lab-risk-status" role="status">Selecione ativos para consultar séries históricas reais sob demanda.</p>
    <div class="lab-risk-table-scroll"><table class="lab-results-table lab-risk-table"><thead><tr><th>Ativo e origem</th><th>Retorno de preço</th><th>Maior drawdown</th><th>Volatilidade a.a.</th><th>Amostra</th></tr></thead><tbody id="lab-risk-rows"></tbody></table></div>
+   <p id="lab-basket-message" class="lab-risk-status" role="status"></p>
+   <section id="lab-basket-result" class="lab-basket-result" aria-label="Análise de risco histórico da cesta de ativos" hidden></section>
    <p class="lab-risk-footnote">O retorno apresentado é somente o do preço: não constitui rentabilidade total com dividendos, custos ou câmbio. A volatilidade exige ao menos 30 retornos diários válidos e usa 252 sessões/ano para ações ou 365 para cripto. Não há Sharpe sem taxa livre de risco explícita na mesma moeda. Não é backtest de carteira.</p>
   </div>
  </details>

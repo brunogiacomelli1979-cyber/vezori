@@ -36,3 +36,11 @@ Sharpe: suporte de motor, **não exibido automaticamente**. Exige taxa anual liv
 4. Ativar namespace KV real antes de prometer histórico persistente capturado pelo Cron.
 
 Documentação das fontes e ativações: `docs/FUNDAMENTALS_DATA.md`, `docs/SNAPSHOT_SETUP.md`, `docs/DAILY_DATA_POLICY.md`.
+
+## Cesta sintética histórica (fase 2)
+- `public/portfolio-risk.js`: analisa dois a cinco ativos reais e produz um **índice sintético retrospectivo base 100**, com pesos constantes reequilibrados diariamente por cálculo matemático. Isso NÃO é uma carteira real nem um backtest investível.
+- **Condições necessárias:** mesma moeda, mesmo mercado/calendário, descrição de base de preços coincidente, ao menos 31 datas coincidentes e nenhuma observação faltando na janela comum. Cestas mistas BRL/USD ou cripto/ações são explicitamente recusadas.
+- Posições não selecionadas ficam fora. Os pesos originais são normalizados somente dentro das posições selecionadas, e a participação original e os pesos normalizados são mostrados ao usuário.
+- Métricas: retorno do índice sintético, drawdown máximo e volatilidade anualizada, calculados somente sobre retornos de preços observados. Correlação de Pearson entre pares, indisponível se houver retornos constantes.
+- O cálculo só é solicitado ao selecionar `Consultar risco histórico`; na falha de um ativo, a cesta não é calculada com cobertura parcial silenciosa.
+- **Pendência crucial:** histórico de ajuste de dividendos/splits e conversão cambial licenciada. Não afirmar rentabilidade total. Números reais de carteira exigirão séries longa duração, reconciliação contábil e política de rebalanceamento.
