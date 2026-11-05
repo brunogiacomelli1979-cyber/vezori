@@ -34,8 +34,10 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-      - name: Validar extrator CVM
-        run: python -m unittest discover -s tests -p 'test_cvm_extract.py'
+      - name: Validar extratores e publicação CVM
+        run: python -m unittest discover -s tests -p 'test_*cvm*.py'
+      - name: Construir demonstrativos CVM 2025 a partir da fonte oficial
+        run: python -m scripts.publish_cvm_fundamentals --year 2025 --out-dir public/data/fundamentals
 
       - name: Avisar quando o Cloudflare nao estiver configurado
         if: ${{ env.CF_TOKEN_CONFIGURED != 'true' || env.CF_ACCOUNT_CONFIGURED != 'true' }}
@@ -68,6 +70,9 @@ jobs:
           if (!/VEZORI/i.test(html)) throw new Error('A pagina principal nao contem a marca VEZORI');
           const health = await read('/api/health');
           if (health.service !== 'VEZORI' || health.status !== 'ok') throw new Error('API de saude invalida');
+          const cvm=await read('/api/fundamentals?market=BR&symbol=PETR3');
+          if(cvm.status!=='verified_accounts'||cvm.symbol!=='PETR3'||!cvm.accounts?.length||!cvm.sourceSha256)throw Error('CVM PETR3 nao publicado');
+          console.log('CVM PETR3:',cvm.periodEnd,cvm.accounts.length,'contas oficiais');
           const market = await read('/api/dashboard');
           if (market.mode !== 'real_market_data' || market.meta?.simulatedPrices !== false) throw new Error('Metadados de mercado invalidos');
           if (!Array.isArray(market.quotes) || !Array.isArray(market.errors)) throw new Error('Contrato de dashboard invalido');
