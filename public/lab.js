@@ -39,7 +39,7 @@ export const LAB_DRAFT_KEY='vezori-lab-scenarios-v1';
 export const LAB_DEFAULTS=Object.freeze({initial:10000,monthly:300,years:10});
 export function suggestedPortfolio(index){
  if(!Number.isInteger(index)||index<0||index>=LAB_PRESETS.length)throw Error('Estratégia inválida');
- return LAB_PRESETS[index].picks.map(([symbol,weight])=>({symbol,weight,rate:0}));
+ return LAB_PRESETS[index].picks.map(([symbol,weight])=>({symbol,weight,rate:demoAnnualRate(symbol,assetMeta(symbol))}));
 }
 export function validateStudy(rows,params={}){
  if(!Array.isArray(rows)||rows.length<1||rows.length>15)throw Error('Escolha entre 1 e 15 ativos ou classes.');
@@ -92,7 +92,7 @@ export function demoAnnualRate(symbol,metadata=assetMeta(symbol)){
 export function createLabBuilder({state}){
  const $=id=>document.getElementById(id);
  let active=0,drafts={},holdings=suggestedPortfolio(0),params={...LAB_DEFAULTS},initialized=false;
- const note='As taxas são hipóteses editáveis, não estimativas da VEZORI. Os preços reais servem apenas como referência e não determinam o resultado matemático.';
+ const note='As taxas pré-preenchidas são exemplos arbitrários para exercício, NÃO expectativas de retorno. Você pode alterá-las ou zerá-las; cotações reais não entram no cálculo.';
  function liveMeta(symbol){return assetMeta(symbol,state.catalog||[]);}
  function latest(symbol){
   const q=(state.data?.quotes||[]).find(q=>q.symbol===symbol)||state.catalog?.find(q=>q.symbol===symbol);
@@ -173,6 +173,8 @@ export function createLabBuilder({state}){
   const d=drafts[index];holdings=d?d.holdings.map(r=>({...r})):suggestedPortfolio(index);
   params=d?{...d.params}:{...LAB_DEFAULTS};
   $('lab-error').textContent='';renderSuggestions();clearResult();initialized=true;
+   $('lab-message').textContent=holdings.every(r=>r.rate===0)?
+    'Todas as taxas estão em 0% a.a.: este cenário terá apenas o capital aportado. Para testar ganhos e perdas, aplique hipóteses ilustrativas ou edite cada taxa.':note;
   document.querySelectorAll('[data-lab-template]').forEach(button=>button.setAttribute('aria-pressed',String(Number(button.dataset.labTemplate)===active)));
  }
  function add(symbol){
@@ -196,14 +198,19 @@ export function createLabBuilder({state}){
   const p=result.params;
   const last=result.years.at(-1);
   $('lab-result-summary').innerHTML=`<div><span>Patrimônio matemático no cenário</span><strong>${money(result.total)}</strong></div><div><span>Total aportado</span><strong>${money(result.invested)}</strong></div><div><span>Diferença hipotética</span><strong class="${result.gain>=0?'lab-positive':'lab-negative'}">${money(result.gain)}</strong></div><div><span>Horizonte</span><strong>${p.years} anos</strong></div>`;
-  const max=Math.max(...result.years.map(y=>y.amount),...result.years.map(y=>y.capital),1),w=940,h=255,pad={left:70,right:22,top:18,bottom:34};
-  const px=i=>pad.left+i/(Math.max(result.years.length-1,1))*(w-pad.left-pad.right),py=value=>h-pad.bottom-value/max*(h-pad.top-pad.bottom);
-  const lineFor=key=>result.years.map((r,i)=>(i===0?'M':'L')+px(i).toFixed(2)+' '+py(r[key]).toFixed(2)).join(' ');
+  const timeline=[{year:0,amount:p.initial,capital:p.initial},...result.years];
+  const max=Math.max(...timeline.map(y=>y.amount),...timeline.map(y=>y.capital),1),w=940,h=255,pad={left:70,right:22,top:18,bottom:34};
+  const px=i=>pad.left+i/(Math.max(timeline.length-1,1))*(w-pad.left-pad.right),py=value=>h-pad.bottom-value/max*(h-pad.top-pad.bottom);
+  const lineFor=key=>timeline.map((r,i)=>(i===0?'M':'L')+px(i).toFixed(2)+' '+py(r[key]).toFixed(2)).join(' ');
   const guidelines=[0,.25,.5,.75,1].map(f=>`<line x1="${pad.left}" x2="${w-pad.right}" y1="${py(max*f).toFixed(2)}" y2="${py(max*f).toFixed(2)}" stroke="#415066" stroke-opacity=".4"/><text x="${pad.left-10}" y="${(py(max*f)+4).toFixed(2)}" text-anchor="end" fill="#94a3b8" font-size="11">${esc(fmt(max*f/1000,0))}k</text>`).join('');
-  $('lab-result-chart').innerHTML=`<svg role="img" aria-label="Evolução matemática de cenário em ${p.years} anos, com total projetado de ${esc(money(result.total))}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid meet">${guidelines}<path d="${lineFor('capital')}" fill="none" stroke="#7a93aa" stroke-width="2" stroke-dasharray="6 5"/><path d="${lineFor('amount')}" fill="none" stroke="#10b981" stroke-width="3"/><text x="${pad.left}" y="${h-7}" fill="#a5b9ca" font-size="11">Ano 1</text><text x="${w-pad.right}" y="${h-7}" text-anchor="end" fill="#a5b9ca" font-size="11">Ano ${p.years}</text></svg><div class="lab-chart-legend"><span><i class="lab-line-green"></i>Valor hipotético</span><span><i class="lab-line-gray"></i>Capital aportado</span></div>`;
+  $('lab-result-chart').innerHTML=`<svg role="img" aria-label="Evolução matemática de cenário em ${p.years} anos, com total projetado de ${esc(money(result.total))}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid meet">${guidelines}<path d="${lineFor('capital')}" fill="none" stroke="#7a93aa" stroke-width="2" stroke-dasharray="6 5"/><path d="${lineFor('amount')}" fill="none" stroke="#10b981" stroke-width="3"/><text x="${pad.left}" y="${h-7}" fill="#a5b9ca" font-size="11">Ano 0</text><text x="${w-pad.right}" y="${h-7}" text-anchor="end" fill="#a5b9ca" font-size="11">Ano ${p.years}</text></svg><div class="lab-chart-legend"><span><i class="lab-line-green"></i>Valor hipotético</span><span><i class="lab-line-gray"></i>Capital aportado</span></div>`;
   $('lab-result-holdings').innerHTML=result.holdings.map(row=>`<tr><td>${esc(row.symbol)}</td><td>${fmt(row.weight)}%</td><td>${fmt(row.rate)}% a.a.</td><td>${money(row.amount)}</td><td>${fmt(row.finalWeight)}%</td></tr>`).join('');
-  $('lab-result-note').textContent=`Resultado nominal de ${p.years} anos. Carteira aportada segundo os pesos escolhidos, sem rebalanceamento. Taxas constantes são hipóteses, não previsões. Não inclui impostos, custos, proventos, inflação, câmbio ou perdas pontuais.`;
-  $('lab-status').textContent=`Cenário calculado · ${result.holdings.length} posições`;
+  $('lab-result-note').textContent=`Resultado nominal de ${p.years} anos. Juro mensal equivalente = (1 + taxa anual/100)^(1/12) − 1; aporte aplicado no fim de cada mês. Não há rebalanceamento. Não inclui tributos, custos, proventos, inflação, câmbio ou volatilidade. Taxas são hipóteses, não previsões.`;
+  const flat=result.holdings.every(row=>row.rate===0);
+  $('lab-status').textContent=flat?'Taxas 0%: sem rendimento':`Cenário ilustrativo · ${result.holdings.length} posições`;
+  $('lab-message').textContent=flat?
+   'O resultado corresponde apenas aos aportes: todas as taxas foram zeradas, portanto não existe ganho ou perda matemática.':
+   'Simulação matemática calculada a partir das taxas anuais editáveis; resultados futuros podem ser totalmente diferentes.';
  }
  function calculate(){
   setError('');
@@ -250,11 +257,11 @@ export function createLabBuilder({state}){
   });
   $('lab-zero-rates').addEventListener('click',()=>{
    holdings=holdings.map(row=>({...row,rate:0}));save();renderSuggestions();clearResult();
-   $('lab-message').textContent='Todas as taxas hipotéticas foram ajustadas para 0% ao ano.';
+   $('lab-message').textContent='Todas as taxas agora são 0%. O cálculo mostrará somente o capital aportado, sem rendimento.';
   });
   $('lab-run').addEventListener('click',calculate);
   selectModel(0);
-  $('lab-message').textContent=note;
+  // selectModel informa o tipo de cenário ao carregar o modelo.
  }
  function refreshQuotes(){
   if($('lab-builder')&&document.querySelector('#view-strategies')?.classList.contains('active')){

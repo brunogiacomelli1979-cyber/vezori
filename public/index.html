@@ -207,7 +207,7 @@
   </div>
   <div class="lab-studio-grid">
     <section class="lab-studio-panel" aria-label="Ativos e pesos da simulação">
-      <div class="lab-panel-head"><div><h3>Composição proposta</h3><p>Edite os pesos e as taxas anuais hipotéticas de cada ativo.</p></div><span id="lab-weights" class="lab-weight-state valid" aria-live="polite">100% / 100%</span></div>
+      <div class="lab-panel-head"><div><h3>Composição proposta</h3><p>Edite os pesos e as taxas anuais hipotéticas (exemplos didáticos, não previsões).</p></div><span id="lab-weights" class="lab-weight-state valid" aria-live="polite">100% / 100%</span></div>
       <div class="lab-table-scroll"><table class="lab-positions-table"><thead><tr>
         <th>Ativo / classe</th><th>Peso</th><th>Taxa hipotética a.a.</th><th><span class="lab-sr-only">Retirar</span></th>
       </tr></thead><tbody id="lab-rows"></tbody></table></div>
@@ -217,11 +217,11 @@
         <button id="lab-add" type="button" class="lab-outline">Adicionar à simulação</button>
       </div>
       <div class="lab-alts"><strong>Alternativas para estudar</strong><div id="lab-alternatives" class="lab-alternative-chips"></div></div>
-      <div class="lab-rate-actions"><button id="lab-demo-rates" class="lab-link" type="button">Aplicar taxas de exemplo didático</button><button id="lab-zero-rates" class="lab-link" type="button">Zerar hipóteses de retorno</button></div>
-      <p id="lab-message" class="lab-muted">Os valores anuais são cenários que você escolhe, não estimativas.</p>
+      <div class="lab-rate-actions"><button id="lab-demo-rates" class="lab-link" type="button">Aplicar hipóteses ilustrativas</button><button id="lab-zero-rates" class="lab-link" type="button">Zerar hipóteses de retorno</button></div>
+      <p id="lab-message" class="lab-muted" role="status">Taxas ilustrativas de estudo, não rentabilidades históricas ou esperadas.</p>
     </section>
     <section class="lab-studio-panel lab-calc-panel" aria-label="Parâmetros e resultado da simulação">
-      <div class="lab-panel-head"><div><h3>Simulação por carteira</h3><p>Aportes distribuídos entre os ativos segundo seus pesos.</p></div><span id="lab-status" class="lab-pill">Aguardando cálculo</span></div>
+      <div class="lab-panel-head"><div><h3>Simulação por carteira</h3><p>Juros mensais compostos, com aportes ao final do mês distribuídos pelos pesos iniciais.</p></div><span id="lab-status" class="lab-pill">Aguardando cálculo</span></div>
       <div class="lab-scenario-fields">
         <label>Capital inicial (R$)<input id="lab-initial" type="number" min="0" max="100000000" step="100" inputmode="decimal" value="10000" /></label>
         <label>Aporte mensal (R$)<input id="lab-monthly" type="number" min="0" max="10000000" step="50" inputmode="decimal" value="300" /></label>

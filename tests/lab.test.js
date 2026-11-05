@@ -11,7 +11,7 @@ test('cinco estratégias têm universos distintos e pesos sugeridos íntegros',(
  LAB_PRESETS.forEach((preset,i)=>{
   const rows=suggestedPortfolio(i);
   assert.equal(rows.reduce((s,row)=>s+row.weight,0),100);
-  assert.ok(rows.every(row=>row.rate===0));
+  assert.ok(rows.every(row=>row.rate===demoAnnualRate(row.symbol,LAB_BUCKETS[row.symbol]||LAB_EXTRA[row.symbol])));
   assert.ok(rows.every(row=>row.symbol in LAB_BUCKETS||row.symbol in LAB_EXTRA||['VOO','QQQ','AAPL','ITUB4','VALE3','PETR4','MGLU3','BTC','ETH','SOL'].includes(row.symbol)));
   seen.add(rows.map(x=>x.symbol).join(','));
  });
@@ -20,7 +20,7 @@ test('cinco estratégias têm universos distintos e pesos sugeridos íntegros',(
 });
 
 test('capital e aportes com 0% retornam exatamente o capital aplicado',()=>{
- const result=simulateStudy(suggestedPortfolio(0),scenario);
+ const result=simulateStudy(suggestedPortfolio(0).map(row=>({...row,rate:0})),scenario);
  const expected=10000+300*120;
  assert.ok(Math.abs(result.total-expected)<1e-6);
  assert.ok(Math.abs(result.invested-expected)<1e-6);
@@ -85,4 +85,20 @@ test('ETFs reais opcionais e classes genéricas são diferenciados',()=>{
  assert.equal(demoAnnualRate('BND',LAB_EXTRA.BND),5);
  assert.equal(demoAnnualRate('GLD',LAB_EXTRA.GLD),4);
  assert.ok(LAB_PRESETS[2].alternatives.includes('GLD'));
+});
+
+test('juros anuais efetivos e aporte no fim de cada mês batem com fórmula financeira independente',()=>{
+ const annual=.08,r=(1+annual)**(1/12)-1,months=120;
+ const expected=10000*(1+r)**months+300*((1+r)**months-1)/r;
+ const result=simulateStudy([{symbol:'VOO',weight:100,rate:8}],{initial:10000,monthly:300,years:10});
+ assert.ok(Math.abs(result.total-expected)<1e-5);
+ assert.equal(result.invested,46000);
+ assert.ok(result.gain>0);
+});
+test('carteira nova oferece taxas explicitamente ilustrativas com variação positiva',()=>{
+ const sample=suggestedPortfolio(2);
+ assert.equal(sample.reduce((sum,r)=>sum+r.weight,0),100);
+ assert.ok(sample.some(r=>r.rate>0));
+ const result=simulateStudy(sample,{initial:10000,monthly:300,years:10});
+ assert.ok(result.total>result.invested);
 });
