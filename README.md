@@ -38,6 +38,17 @@ Plataforma independente de pesquisa e simulação de investimentos, desenvolvida
 - **Dependências pendentes:** BRAPI_API_KEY para ampliar histórico brasileiro, COINGECKO_API_KEY Demo para histórico cripto, licença apropriada para exibição pública dos EUA, e KV para armazenamento histórico persistente. Nenhuma chave foi publicada no repositório.
 - **Escopo:** a análise é de preço histórico, não incorpora múltiplos fundamentalistas completos, liquidez, spread, impostos ou preço de aquisição pessoal. Não há integração de ordens na corretora.
 
+## Histórico ampliado — 05/11/2026
+
+A ficha do ativo e o comparador agora aceitam **1 mês, 3 meses, 6 meses, 1 ano, 2 anos, 5 anos, 10 anos e máximo disponível**. A API `/api/history` devolve `coverage` com datas extremas efetivamente recebidas, solicitações originais e `completeSinceListing:false`: o termo máximo indica **máximo retornado pela fonte/plano**, não todo o histórico da empresa.
+
+- **B3/brapi:** pedidos longos utilizam o endpoint oficial de série histórica. O plano gratuito pode truncar silenciosamente acima de 3 meses; a data inicial e final reais devem acompanhar o gráfico. Não preencher o intervalo faltante.
+- **CoinGecko Demo:** até 365 dias, sem garantia de datas anteriores. Intervalos curtos chegam em pontos intradiários e são reduzidos por dia UTC selecionando o último preço observado de cada dia; não rotular como fechamento de bolsa. Pedidos acima de 1 ano retornam erro explícito, em vez de simular acesso pago.
+- **Twelve Data:** até 5.000 pontos por consulta, respeitando assinatura e autorização para **exibição pública**. Pedidos longos poderão exigir paginação futura, desde que contratualmente permitida.
+- **Atualização automática:** cron 02:30 UTC **todos os dias**, pois o mercado cripto funciona também aos finais de semana. Os snapshots diários exigem o binding `MARKET_SNAPSHOTS`; snapshots não equivalem automaticamente ao fechamento oficial de ações.
+- **Atenção B3/COTAHIST:** a página oficial anuncia histórico desde 1986, mas veda coleta automatizada. Não baixar em lote nem redistribuir os arquivos sem autorização. O projeto deverá investigar contratos ou fontes alternativas autorizadas antes de realizar backfill completo.
+- **História completa:** requer identificação da primeira sessão/listagem por ativo, ajustes corporativos, normalização de fusões/mudanças de ticker e séries compradas ou licenciadas quando não há fonte grátis compatível. Um valor `completeSinceListing:true` só poderá ser atribuído após auditoria formal dessa cobertura.
+
 ## Configurações externas para cobertura completa
 
 As seguintes configurações **não** devem ser fornecidas em chats nem inseridas no repositório:
