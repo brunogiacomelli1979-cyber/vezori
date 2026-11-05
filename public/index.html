@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/apex.css?v=25" />
-  <link rel="stylesheet" href="/research.css?v=30" />
+  <link rel="stylesheet" href="/research.css?v=31" />
   <link rel="stylesheet" href="/home.css?v=24" />
   <link rel="stylesheet" href="/lab.css?v=28" />
   <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
@@ -181,7 +181,11 @@
           <div class="research-panel research-asset-hero"><div class="research-head"><div><h1 id="research-asset-name">PETR4</h1><p id="research-asset-type">Ação Brasil · BRL</p></div><div class="research-head-buttons"><label class="research-input-label">Trocar ativo<select id="research-asset-symbol" aria-label="Selecionar ativo"></select></label><button id="research-asset-add-compare" class="research-action-primary" type="button">+ Comparar</button></div></div>
             <div class="research-asset-price-line"><strong id="research-asset-price">—</strong><span id="research-asset-change">—</span></div><p class="research-source" id="research-asset-source">Consultando a cotação…</p></div>
           <div class="research-panel research-chart-panel"><div class="research-head"><div><h2>Histórico de preços</h2><p>Fechamentos efetivos do fornecedor. Não representam retorno total.</p></div><label class="research-input-label">Período<select id="research-asset-period"><option value="1mo">1 mês</option><option value="3mo">3 meses</option></select></label></div>
-            <div class="research-chart"><div id="research-asset-lightweight" class="research-lightweight" role="img" aria-label="Gráfico financeiro interativo com preços históricos reais" hidden></div><canvas id="research-asset-chart" aria-label="Gráfico de preço histórico do ativo" role="img"></canvas><p id="research-asset-chart-fallback" class="research-chart-empty">Selecione um ativo para consultar a série.</p></div><p class="research-chart-attribution">Gráficos com <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">TradingView</a> Lightweight Charts™ · Copyright (c) 2025 TradingView, Inc. Valores provenientes das APIs indicadas, não da TradingView.</p><div id="research-asset-details" class="research-detail-metrics"></div><p id="research-asset-history-status" class="research-source" role="status">Aguardando consulta histórica.</p></div>
+            <div class="research-chart"><div id="research-asset-lightweight" class="research-lightweight" role="img" aria-label="Gráfico financeiro interativo com preços históricos reais" hidden></div><canvas id="research-asset-chart" aria-label="Gráfico de preço histórico do ativo" role="img"></canvas><p id="research-asset-chart-fallback" class="research-chart-empty">Selecione um ativo para consultar a série.</p></div><p class="research-chart-attribution">Gráficos com <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">TradingView</a> Lightweight Charts™ · Copyright (c) 2025 TradingView, Inc. Valores provenientes das APIs indicadas, não da TradingView.</p><div id="research-asset-details" class="research-detail-metrics"></div><p id="research-asset-history-status" class="research-source" role="status">Aguardando consulta histórica.</p>
+            <div id="research-history-availability" class="research-history-availability">
+              <p id="research-history-nextstep" class="research-source"></p>
+              <div class="research-history-actions"><a id="research-history-cta" class="research-official-source" rel="noopener noreferrer" target="_blank" hidden></a><button id="research-history-alternative" type="button" class="research-history-alternative" hidden></button></div>
+            </div></div>
           <div class="research-panel research-risk-panel">
             <div class="research-head"><div><h2>Risco observado do preço</h2><p>Estatísticas dos fechamentos reais do período selecionado, sem previsões nem simulações.</p></div><span class="research-data-tag">RETROSPECTIVO</span></div>
             <div id="research-risk-metrics" class="research-detail-metrics"></div>
