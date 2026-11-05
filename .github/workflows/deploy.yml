@@ -70,6 +70,19 @@ jobs:
           if (market.mode !== 'real_market_data' || market.meta?.simulatedPrices !== false) throw new Error('Metadados de mercado invalidos');
           if (!Array.isArray(market.quotes) || !Array.isArray(market.errors)) throw new Error('Contrato de dashboard invalido');
           const validQuotes = market.quotes.filter(q => Number.isFinite(q.price) && q.price > 0 && q.provider);
+          if (!html.includes('id="research-risk-metrics"') || !html.includes('id="lab-risk-study"')) throw new Error('Modulos de risco ausentes no HTML publicado');
+          const riskResponse = await fetch(root + '/risk-analytics.js', {signal: AbortSignal.timeout(15000)});
+          if (!riskResponse.ok || !(await riskResponse.text()).includes('analyzeAssetRisk')) throw new Error('Modulo quantitativo indisponivel em producao');
+          try {
+            const historyResponse = await fetch(root + '/api/history?market=BR&symbol=PETR4&range=3mo', {signal: AbortSignal.timeout(16000)});
+            if (historyResponse.ok) {
+              const history = await historyResponse.json();
+              if (history.symbol !== 'PETR4' || !Array.isArray(history.points) || history.points.some(p => !Number.isFinite(p.close) || p.close <= 0)) throw new Error('Historico PETR4 invalido');
+              console.log('HISTORICO REAL PETR4:', history.points.length, 'fechamentos');
+            } else console.log('::warning::Historico de PETR4 nao disponivel no provedor durante o smoke: HTTP ' + historyResponse.status);
+          } catch (err) {
+            console.log('::warning::Nao foi possivel confirmar historico PETR4 agora: ' + err.message);
+          }
           if (!html.includes('id="home-rankings"') || !/\/home\.css\?v=\d+/.test(html) || !html.includes('id="lab-zero-warning"')) throw new Error('Frontend de mercados e laboratorio nao esta publicado');
           const catalog = await read('/api/catalog?limit=5&page=1');
           if (catalog.mode !== 'real_market_catalog' || !Array.isArray(catalog.items) || !catalog.items.length) throw new Error('Catalogo B3 sem itens da fonte');

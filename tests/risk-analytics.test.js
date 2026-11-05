@@ -30,11 +30,11 @@ test('amostra pequena não gera volatilidade anualizada, mesmo com cotação',()
  assert.ok(r.returnPct>0);
 });
 test('Sharpe só com mínimo de 60 retornos, taxa expressa e variância não nula',()=>{
- const r=analyzeAssetRisk(series('CRYPTO',Array.from({length:65},(_,i)=>p(addDays('2026-08-01',i),100*(1.001)**i*(i%2?.999:1.001)))),{riskFreeAnnualPct:4});
+ const r=analyzeAssetRisk(series('CRYPTO',Array.from({length:65},(_,i)=>p(addDays('2026-08-01',i),100*(1.001)**i*(i%2?.999:1.001)))),{riskFreeAnnualPct:4,riskFreeCurrency:'BRL'});
  assert.equal(r.returnObservations,64);
  assert.ok(typeof r.sharpeAnnual==='number'&&Number.isFinite(r.sharpeAnnual));
- assert.equal(analyzeAssetRisk(cryptoHistory(65),{riskFreeAnnualPct:0}).sharpeAnnual,null);
- assert.throws(()=>analyzeAssetRisk(cryptoHistory(65),{riskFreeAnnualPct:-101}),/inválida/);
+ assert.equal(analyzeAssetRisk(cryptoHistory(65),{riskFreeAnnualPct:0,riskFreeCurrency:'BRL'}).sharpeAnnual,null);
+ assert.throws(()=>analyzeAssetRisk(cryptoHistory(65),{riskFreeAnnualPct:-101,riskFreeCurrency:'BRL'}),/inválida/);
 });
 test('não fabrica preços nem aceita duplicatas contraditórias ou lacunas longas',()=>{
  assert.throws(()=>prepareRiskHistory(series('BR',[p('2026-10-01',10),p('2026-10-01',11)])),/conflitantes/);
@@ -48,4 +48,12 @@ test('série diária é ordenada e respeita método do provedor sem preencher fi
  assert.deepEqual(s.points.map(x=>x.date),['2026-10-30','2026-11-02','2026-11-03']);
  assert.equal(s.provider,'provedor de teste');
  assert.equal(RISK_MIN_RETURNS_SHARPE,60);
+});
+
+test('recusa Sharpe quando taxa de referência não declara a mesma moeda',()=>{
+ assert.throws(()=>analyzeAssetRisk(cryptoHistory(65),{riskFreeAnnualPct:4}),/Moeda/);
+ assert.throws(()=>analyzeAssetRisk(cryptoHistory(65),{riskFreeAnnualPct:4,riskFreeCurrency:'USD'}),/Moeda/);
+});
+test('lacuna de um dia em cripto não é tratada como retorno diário',()=>{
+ assert.throws(()=>prepareRiskHistory(series('CRYPTO',[p('2026-10-01',10),p('2026-10-03',11)])),/incompleta/);
 });

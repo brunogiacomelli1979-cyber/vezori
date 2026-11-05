@@ -30,7 +30,7 @@ export function prepareRiskHistory(series){
  // A long outage means we cannot treat one price change as a daily observation.
  for(let i=1;i<points.length;i++){
   const elapsed=differenceDays(points[i-1].date,points[i].date);
-  if(elapsed<1||elapsed>(series.market==='CRYPTO'?2:8))throw Error('Intervalo entre observações incompatível com retorno diário; série incompleta');
+  if(elapsed<1||(series.market==='CRYPTO'?elapsed!==1:elapsed>8))throw Error('Intervalo entre observações incompatível com retorno diário; série incompleta');
  }
  return {points,market:series.market,currency:series.currency,provider:String(series.provider||'Fonte não identificada'),priceBasis:String(series.priceBasis||'Base de preços não identificada')};
 }
@@ -43,7 +43,7 @@ function sampleStdev(values){
 }
 
 /** Risk measured from price-only daily returns; annualized volatility is an estimate. */
-export function analyzeAssetRisk(series,{riskFreeAnnualPct=null}={}){
+export function analyzeAssetRisk(series,{riskFreeAnnualPct=null,riskFreeCurrency=null}={}){
  const prepared=prepareRiskHistory(series);
  const {points,market}=prepared;
  const daily=[];
@@ -60,6 +60,7 @@ export function analyzeAssetRisk(series,{riskFreeAnnualPct=null}={}){
  const returnPct=rounded((points.at(-1).close/points[0].close-1)*100);
  let sharpeAnnual=null;
  if(riskFreeAnnualPct!==null){
+  if(riskFreeCurrency!==prepared.currency)throw Error('Moeda da taxa livre de risco deve coincidir com a moeda dos preços');
   const riskFree=Number(riskFreeAnnualPct);
   if(!Number.isFinite(riskFree)||riskFree<=-100||riskFree>100)throw Error('Taxa livre de risco inválida');
   // The caller must ensure the benchmark and price series are in the same currency.
@@ -73,7 +74,7 @@ export function analyzeAssetRisk(series,{riskFreeAnnualPct=null}={}){
   provider:prepared.provider,priceBasis:prepared.priceBasis,
   firstDate:points[0].date,lastDate:points.at(-1).date,observations:points.length,returnObservations:count,
   observationSessionsPerYear:sessionsPerYear,returnPct,maxDrawdownPct:rounded(maxDrawdownPct),volatilityAnnualPct,
-  sharpeAnnual,sharpeRiskFreeAnnualPct:riskFreeAnnualPct,
+  sharpeAnnual,sharpeRiskFreeAnnualPct:riskFreeAnnualPct,sharpeRiskFreeCurrency:riskFreeCurrency,
   notes:[
    'Medidas somente de preços, sem dividendos, impostos, taxas e inflação.',
    'Volatilidade: desvio-padrão amostral dos retornos entre fechamentos × raiz de '+sessionsPerYear+' sessões por ano.',
