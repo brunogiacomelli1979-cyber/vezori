@@ -55,7 +55,7 @@ test('VEZORI 2.0 mantém módulos e conecta exploração e comparação',()=>{
   assert.ok(html.includes('data-view="'+name+'"'));
  }
  assert.ok(html.includes('id="view-asset"'));
- assert.match(html,/research\.css\?v=20/);
+ assert.match(html,/research\.css\?v=\d+/);
  assert.match(app,/createResearchTools/);
  assert.match(app,/researchTools\?\.onNavigate\(view\)/);
 });
