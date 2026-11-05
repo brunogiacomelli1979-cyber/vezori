@@ -5,6 +5,7 @@
 import {ASSETS} from './finance.js';
 import {mountMarketChart} from './market-charts.js';
 import {analyzeAssetRisk} from './risk-analytics.js';
+import {suggestPriceZones} from './price-zones.js';
 
 const $=id=>document.getElementById(id);
 const esc=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -218,6 +219,8 @@ export function createResearchTools({state,navigate,getJson}){
   $('research-asset-details').innerHTML='';
   $('research-risk-metrics').innerHTML='';
   $('research-risk-status').textContent='Aguardando histórico válido para estimar risco de preço…';
+  $('research-price-zones').innerHTML='';
+  $('research-price-zones-status').textContent='Buscando pelo menos 50 fechamentos verificáveis…';
   const canvas=$('research-asset-chart');canvas.hidden=true;
   $('research-asset-lightweight').hidden=true;
   if(detailChart){detailChart.destroy();detailChart=null;}
@@ -232,6 +235,24 @@ export function createResearchTools({state,navigate,getJson}){
    $('research-asset-history-status').textContent=`${summary.count} observações · ${series.provider} · ${summary.first} a ${summary.last} · ${series.priceBasis}`;
    $('research-asset-details').innerHTML=`<div><span>Retorno de preço no período</span><strong class="${delta(summary.returnPct)}">${percent(summary.returnPct)}</strong></div><div><span>Menor fechamento</span><strong>${currency(summary.min,series.currency)}</strong></div><div><span>Maior fechamento</span><strong>${currency(summary.max,series.currency)}</strong></div><div><span>Último fechamento</span><strong>${currency(summary.lastClose,series.currency)}</strong></div>`;
    setChart('detail',points.map(p=>p.date),[{symbol:selected,values:points.map(p=>p.close)}]);
+   // A janela de análise usa 3 meses, mesmo quando o gráfico mostra 1 mês.
+   try{
+    const zoneSeries=period==='3mo'?series:await fetchHistory(selected,'3mo');
+    if(request!==detailRequest)return;
+    const zones=suggestPriceZones(zoneSeries);
+    const fmt=n=>currency(n,zones.currency);
+    $('research-price-zones').innerHTML=
+     '<div><span>Faixa de compra indicativa</span><strong class="positive">'+fmt(zones.buy[0])+' – '+fmt(zones.buy[1])+'</strong><small>Suporte estatístico + volatilidade</small></div>'+
+     '<div><span>Faixa de venda indicativa</span><strong>'+fmt(zones.sell[0])+' – '+fmt(zones.sell[1])+'</strong><small>Resistência estatística + volatilidade</small></div>'+
+     '<div><span>Limite de risco ilustrativo</span><strong class="negative">'+fmt(zones.riskLimit)+'</strong><small>Não é uma ordem automática de stop</small></div>'+
+     '<div><span>Médias históricas 20 / 50</span><strong>'+fmt(zones.sma20)+' / '+fmt(zones.sma50)+'</strong><small>Referência: '+esc(zones.lastDate)+'</small></div>';
+    $('research-price-zones-status').textContent=zones.observations+' fechamentos de '+zones.provider+' · '+zones.firstDate+' a '+zones.lastDate+' · '+zones.methodology+' '+zones.disclaimer;
+   }catch(error){
+    if(request!==detailRequest)return;
+    $('research-price-zones').innerHTML='';
+    $('research-price-zones-status').textContent='Faixas indisponíveis: '+String(error.message||error)+'. Nenhum preço indicativo foi inventado.';
+   }
+
    $('research-history-cta').hidden=true;
    $('research-history-nextstep').textContent='';
    try{
@@ -251,6 +272,8 @@ export function createResearchTools({state,navigate,getJson}){
    if(request!==detailRequest)return;
    $('research-asset-history-status').textContent=`Histórico indisponível: ${err.message}`;
    $('research-risk-status').textContent='Risco histórico indisponível sem fechamentos verificáveis.';
+   $('research-price-zones').innerHTML='';
+   $('research-price-zones-status').textContent='Sem histórico verificável suficiente; nenhuma sugestão de preço será exibida.';
    $('research-asset-chart-fallback').hidden=false;
    $('research-asset-chart').closest('.research-chart').classList.add('is-missing');
    const text=String(err.message||'').toLowerCase(),m=metaOf(selected)?.market;
