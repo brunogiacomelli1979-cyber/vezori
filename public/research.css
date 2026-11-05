@@ -60,3 +60,15 @@
 .research-chart .research-lightweight[hidden]{display:none!important}
 .research-chart-attribution{font-size:10px;color:#8094a6;line-height:1.5;margin:7px 0 2px}
 .research-chart-attribution a{color:#7bcfaf;text-decoration:underline;text-underline-offset:2px}
+
+/* Ficha de ativo: indisponibilidade ocupa pouca área e oferece ação útil */
+.research-chart.is-missing{height:auto;min-height:90px;margin-top:8px}
+.research-chart.is-missing canvas,.research-chart.is-missing .research-lightweight{display:none!important}
+.research-chart.is-missing .research-chart-empty{min-height:76px;padding:17px 18px;line-height:1.6;background:#162336;border:1px dashed #3b5264;border-radius:9px;color:#b8cedf;display:flex;align-items:center;justify-content:flex-start;text-align:left}
+.research-history-availability{margin-top:12px}
+.research-history-availability p:empty{display:none}
+.research-history-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.research-history-alternative{font:inherit;background:#1c3245;border:1px solid #43677b;border-radius:8px;color:#b9e4ef;font-size:11px;padding:10px 12px;cursor:pointer;font-weight:650}
+.research-history-alternative:hover{background:#294357}
+.research-history-alternative[hidden]{display:none!important}
+.research-chart canvas[hidden],.research-chart .research-lightweight[hidden]{display:none!important}
