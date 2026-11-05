@@ -1,112 +1,89 @@
 # VEZORI — Veja além dos números
 
-Plataforma independente de inteligência de investimentos com **consultas reais a APIs financeiras**, motor de carteira multimoeda, desempenho ponderado por fluxos e estudo de estratégias. Código preparado para novo repositório GitHub dedicado (`vezori`) e publicação com **Cloudflare Workers**, sem Railway e sem obrigatoriedade de servidores pagos.
+Plataforma independente de pesquisa e simulação de investimentos, desenvolvida em JavaScript/Cloudflare Workers, com pipelines Python para dados oficiais de companhias. Foco em **fontes verificáveis, UX compacta, custo operacional baixo** e transparência sobre indisponibilidade de dados.
 
-> **Status de produção (04/11/2026):** deploy confirmado em https://vezori.bruno-giacomelli1979.workers.dev via GitHub Actions. **24 testes automatizados aprovados.** A verificação online confirmou 4 cotações brasileiras, 2 referências de câmbio e 1 indicador macro. A API CoinGecko pública sem chave respondeu HTTP 403 no Cloudflare: para habilitar BTC, ETH e SOL, cadastre uma chave gratuita Demo como secret `COINGECKO_API_KEY` no Worker. Ações/ETFs internacionais requerem `TWELVEDATA_API_KEY`. Não publicar credenciais no repositório.
+**Produção:** https://vezori.bruno-giacomelli1979.workers.dev  
+**Repositório exclusivo:** `brunogiacomelli1979-cyber/vezori` · branch `main`.
 
-## Recursos já implementados
+## VEZORI 3.0 — o que funciona
 
-| Recurso | Funciona? | Fonte / observação |
-| --- | --- | --- |
-| Ações brasileiras PETR4, VALE3, ITUB4, MGLU3 | Sim, consultas sem token | brapi /v2/stocks/quote |
-| Busca por ticker B3 | Sim, se permitido no plano | Requer `BRAPI_API_KEY` para outros papéis |
-| Dólar e euro em reais | Sim, referência diária | Frankfurter v2, não é PTAX intradiária |
-| Meta Selic | Sim, valor oficial disponível | BCB SGS 432 |
-| Bitcoin, Ethereum e Solana | Sim, ao configurar chave Demo | CoinGecko |
-| VOO, QQQ e AAPL | Sim, ao configurar chave Basic | Twelve Data |
-| Histórico gráfico 1 ou 3 meses | Sim, se endpoint/plano retornar pontos | BRAPI v2 stocks/historical, Twelve Data /time_series, CoinGecko /market_chart |
-| Carteira real, sem dados pré-carregados | Sim | Lançamentos de compras, vendas, proventos, taxas e câmbio histórico |
-| Custo médio e ganhos realizados | Sim | Média móvel ponderada de custos em BRL, taxas incluídas |
-| Patrimônio e ganho não realizado | Sim, se há cotação e FX para todas as posições | Mark-to-market em BRL |
-| XIRR | Sim, se série de fluxos é válida e há precificação integral | Retorno anualizado ponderado por fluxos, com saldo terminal |
-| Estratégias de estudo | Sim | Modelos didáticos, **não são carteiras reais nem backtests** |
-| Projeção de aportes | Sim, matemática hipotética | Taxa escolhida pelo usuário, não previsão nem histórico |
-| Exportação/importação | Sim | JSON validado, somente no navegador |
-| Login, sincronização da carteira, imposto, trading | Não | Próximas versões com backend autenticado |
+| Módulo | Cobertura e estado |
+|---|---|
+| Mercados | Listagem de ações, FIIs, ETFs e BDRs da B3 com consulta por nome; rankings curtos e navegação por ativo; cripto e catálogo de EUA |
+| Cotações | brapi (ações brasileiras de teste), CoinGecko Demo (BTC/ETH/SOL quando chave configurada), Frankfurter (câmbio diário), BCB (meta Selic) |
+| Fichas | Preço, variação, proveniência, gráfico financeiro via Lightweight Charts com fallback Chart.js; se histórico não estiver disponível, aviso compacto e orientação para habilitar a fonte |
+| Fundamentos Brasil | CVM DFP **2025**, cinco tickers: PETR3/PETR4, VALE3, ITUB3/ITUB4; 73 contas oficiais na última publicação validada, com código CVM, escala convertida, revisão, período e SHA-256 de origem |
+| Fundamentos EUA | Parser SEC EDGAR 10-K com identificação de CIK para AAPL, MSFT e REITs O/PLD, preparado para receita, lucro, ativos, passivos, margem e ROE quando insumos permitem. Exige `SEC_USER_AGENT` válido no Worker |
+| Carteira | Uma aba para posições, movimentos, proventos, custo médio, ganhos realizados, XIRR e backup JSON; dados pessoais permanecem no navegador |
+| Laboratório | Cinco estratégias educativas, taxas **hipotéticas editáveis**, projeções com aportes e alerta para retornos absurdos; seção opcional de risco com séries históricas reais |
+| Risco observado | Retorno de preço, drawdown, volatilidade anualizada, correlação, cesta retrospectiva de 2 a 5 ativos da mesma moeda e calendário; não é retorno total, recomendação nem backtest de carteira real |
+| Histórico de dados | Cache diário regional ativado. Cron de captura persistente preparado; **o binding Workers KV ainda depende de permissão de namespace** |
+| Deploy e testes | GitHub Actions publica no Cloudflare e executa testes JS/Python e smoke tests com mercado e arquivos CVM. A rotina de publicação também está agendada semanalmente para atualizar DFP |
 
-## Saúde das APIs e limites observados
+## Dados financeiros: o que NÃO é inventado
 
-Em 04/11/2026, a brapi respondeu HTTP 429 com quatro requisições simultâneas; a implementação foi alterada para consultar os quatro tickers gratuitos em lote, reduzindo as chamadas. A API pública CoinGecko sem credencial respondeu HTTP 403 na infraestrutura Cloudflare. Os valores ausentes são explicitamente marcados como indisponíveis — não são preenchidos com preços fictícios.
+- Sem preços simulados nem preenchimento de dias ausentes. Histórico, volumes e fundamentos vêm apenas de provedores e documentos identificados.
+- Cotações e histórico **não são necessariamente retorno total**; preços podem não estar ajustados por proventos, desdobramentos, câmbio e inflação.
+- Ações ordinárias e preferenciais de uma mesma companhia **não são intercambiáveis**; a ficha PETR3 pode sugerir apenas um atalho **explicitamente identificado** para histórico público da PETR4.
+- As contas da CVM são lançamentos **oficiais**, mas não equivalem automaticamente a P/L, P/VP, DY, valor justo ou ROIC. Indicadores dependem de critérios e insumos completos.
+- As carteiras de Buffett, Bogle, Dalio e Graham são **modelos de estudo**, não réplicas reais de gestores.
+- Quando o usuário possui ativos em BRL e USD, a plataforma não inventa câmbio histórico nem combina séries sem conversão válida.
 
-- Chaves financeiras são configuradas em **Cloudflare Workers > vezori > Settings > Variables and Secrets**, como tipo **Secret**.
-- Configurar `COINGECKO_API_KEY` para criptomoedas e `TWELVEDATA_API_KEY` para ativos globais. A `BRAPI_API_KEY` é opcional para outros tickers, conforme plano.
-- Não confundir os dois segredos `CLOUDFLARE_API_TOKEN` e `CLOUDFLARE_ACCOUNT_ID`, usados no GitHub apenas para deploy, com chaves dos provedores financeiros, usadas no Worker em tempo de execução.
+## Configurações externas para cobertura completa
+
+As seguintes configurações **não** devem ser fornecidas em chats nem inseridas no repositório:
+
+1. `BRAPI_API_KEY` — crie uma chave no plano gratuito em https://brapi.dev/ e configure como **Secret** no Cloudflare Worker `vezori`. O plano gratuito oferece até 15 mil requisições/mês e no máximo 3 meses de histórico, sujeito aos termos do provedor. Sem chave, PETR3 e outros ativos da B3 podem ter cotação de listagem, mas não histórico.
+2. `SEC_USER_AGENT` — configure uma identificação de aplicação e contato **verdadeiro** para acesso automatizado às demonstrações SEC. Sem esse segredo, o endpoint informa `not_configured` e não apresenta valores fictícios.
+3. **Ações e REITs americanos:** uma chave `TWELVEDATA_API_KEY` sozinha **não concede** autorização de exibição pública de cotações. A variável `US_PUBLIC_DISPLAY_AUTHORIZED=true` deve ser habilitada somente quando os direitos de exibição forem efetivamente contratados.
+4. **Workers KV:** namespace `vezori-MARKET_SNAPSHOTS`, binding `MARKET_SNAPSHOTS`. O CI tenta listar/criar o namespace utilizando o token já conectado, mas preserva o deploy se faltarem permissões. Para completar, conceda permissões suficientes de Workers KV no Cloudflare **ou** crie e vincule o namespace manualmente. Confirme `/api/health` → `sourcesConfigured.marketSnapshotStorage=true` antes de afirmar que os snapshots persistentes estão ativos.
+
+O repositório nunca publica segredos, e nenhuma ação modifica Workers de outros projetos.
+
+## Operação
+
+```bash
+npm install --no-audit --no-fund
+npm run check
+python -m unittest discover -s tests -p 'test_*cvm*.py'
+python -m scripts.publish_cvm_fundamentals --year 2025 --out-dir public/data/fundamentals
+npm run deploy
+```
+
+Para executar localmente, use `npm run dev`. `public/data/fundamentals` é gerado com arquivos da CVM durante o deploy, não contém demonstrações fictícias fixas.
+
+**Revisões e cron:** os demonstrativos de 2025 são reprocessados semanalmente pelo workflow de deploy. Para atualizar 2026 quando a DFP anual estiver completa e validada, altere explicitamente o parâmetro `--year` no pipeline e repita os testes.
 
 ## Arquitetura
 
 ```text
-GitHub (código, CI) -> Cloudflare Workers (frontend + API server-side)
-                                   |
-                      ┌────────────┼─────────────┐
-                      |            |             |
-                     brapi       Banco Central   Frankfurter
-                      |            |             |
-                    CoinGecko   Twelve Data    Cache de resposta
-                                   |
-                   Interface + motor financeiro no navegador
-                   carteira local, sem upload de transações
+                        GitHub Actions
+                       /       |       \
+           Testes Node/Python  CVM DFP  Deploy Wrangler
+                               |              |
+                           JSON CVM      Cloudflare Worker
+                                             |
+                           ┌─────────────────┼──────────────────┐
+                           |                 |                  |
+                     APIs de mercado   Dados CVM estáticos   Cron EOD
+                           |                 |             KV opcional
+                           └─────────────────┴──────────────────┘
+                                             |
+                           VEZORI frontend + Laboratório
+                                             |
+                         Carteira somente em localStorage
 ```
 
-O Workers serve os arquivos de `public/` e executa `src/worker.js` para rotas `/api/*`. Chaves ficam em `Secrets`, nunca no frontend. Não há preços embutidos ou fallback numérico em produção. Cada consulta informa fonte e data de referência quando oferecida.
+## Documentação de engenharia
 
-## Começar localmente
+- [Fundamentos CVM / SEC](docs/FUNDAMENTALS_DATA.md)
+- [Snapshots e ativação KV](docs/SNAPSHOT_SETUP.md)
+- [Análise de risco e método](docs/RISK_ANALYTICS.md)
+- [Limites de dados americanos](docs/DAILY_DATA_POLICY.md)
+- [Acompanhamento de entregas e bloqueios](https://github.com/brunogiacomelli1979-cyber/vezori/issues/2)
 
-Pré-requisitos: Node.js 20+ e uma conta Cloudflare para publicação.
+## Licenciamento e transparência
 
-```bash
-npm install
-cp .dev.vars.example .dev.vars
-npm run dev
-```
+O código autoral é MIT. As dependências gráficas conservam os créditos exigidos, e a origem dos preços é separada da origem das bibliotecas. Os direitos de exibição dos dados financeiros são independentes da licença do código open source.
 
-Edite `.dev.vars` somente no seu computador para habilitar APIs opcionais. Não faça commit desse arquivo.
-
-Para testar os cálculos e o roteamento sem gastar requisições financeiras:
-
-```bash
-npm test
-```
-
-## Repositório criado — próxima etapa: Cloudflare Workers
-
-- Repositório: https://github.com/brunogiacomelli1979-cyber/vezori
-- Branch de produção: `main`
-- Código enviado: frontend, backend, testes e documentação.
-- **Ainda não há URL pública operacional do aplicativo.**
-
-Para publicar, no painel https://dash.cloudflare.com/ abra **Workers & Pages → Create application → GitHub**, autorize o repositório `brunogiacomelli1979-cyber/vezori`, mantenha o diretório raiz e o nome de Worker `vezori` (igual ao `wrangler.jsonc`), selecione `main` e configure o comando de deploy `npx wrangler deploy`. Em seguida, confira `/api/health` e `/api/dashboard`.
-
-As chaves opcionais `BRAPI_API_KEY`, `COINGECKO_API_KEY` e `TWELVEDATA_API_KEY` devem ser inseridas somente em **Worker → Settings → Variables and Secrets**, como *Secrets*.
-
-Mais detalhes em [docs/PUBLICACAO.md](docs/PUBLICACAO.md) e [docs/ARQUITETURA.md](docs/ARQUITETURA.md).
-
-## Rotas da API
-
-- `GET /api/health` — status e flags de configuração (sem expor valores das chaves).
-- `GET /api/dashboard` — cotações, câmbio, Selic, fontes, status por fornecedor e falhas.
-- `GET /api/quote?market=BR&symbol=PETR4` — consulta de um ativo brasileiro ou internacional (`market=US`) ou cripto (`market=CRYPTO`, BTC/ETH/SOL).
-- `GET /api/history?market=BR&symbol=PETR4&range=1mo` — série de preços de 1 ou 3 meses, conforme limites do plano.
-
-## Transparência financeira e limitações
-
-- Câmbio atual de referência Frankfurter é aplicado à **marcação atual** de ativos USD. O câmbio histórico da **compra/venda** deve ser informado pelo usuário. Isso evita converter operações antigas usando dólar de hoje.
-- Preços podem ter delay e ser preços de fechamento. **Não são feed tick-by-tick**, e o indicador Selic é a **meta**, não o CDI.
-- A carteira tem preço médio e resultado em reais (BRL), sem classificação de lote fiscal, imposto, split automático, custo cambial separado ou cálculo de proventos recebidos automaticamente. Registre taxas/proventos corretamente.
-- XIRR representa o retorno dos fluxos lançados e a precificação terminal. Sem cobertura integral, aparece indisponível. Não equivale a desempenho bruto da plataforma ou cálculo tributário.
-- Os gráficos mostram apenas valores realmente retornados pelas APIs; histórico ajustado e bruto têm implicações diferentes para cálculo de retorno.
-- Projeções e carteiras-modelo são material educacional, não aconselhamento financeiro, garantia de rendimento ou réplica das posições de grandes investidores.
-- A carteira local fica no dispositivo, em `localStorage`. **Não armazene chaves, senhas ou documentos no histórico.** Faça backup regularmente. Para sincronização entre dispositivos será necessário banco de dados com autenticação e controles de segurança.
-- Produtos públicos que redistribuem dados de mercado podem exigir direitos/licenças de exibição (B3/EUA) mesmo que a API tenha plano gratuito. Confirme termos antes de uso comercial/público amplo.
-
-## Fontes oficiais
-
-- https://brapi.dev/docs e https://brapi.dev/faq/api-e-gratis-mesmo
-- https://dadosabertos.bcb.gov.br/ e https://api.bcb.gov.br/
-- https://frankfurter.dev/
-- https://docs.coingecko.com/
-- https://twelvedata.com/docs
-- https://developers.cloudflare.com/workers/static-assets/
-
-## Licença e marca
-
-**VEZORI** é a identidade do projeto. Disponibilidade jurídica e digital do nome ainda requer verificação formal. Código sob licença MIT; não usar marcas ou layouts de terceiros.
+**VEZORI não oferece recomendação personalizada, execução de ordens, autorização regulatória, login ou sincronização entre dispositivos.** Dados de terceiros podem estar indisponíveis e devem ser conferidos nas fontes originais.
