@@ -211,6 +211,21 @@ export function createResearchTools({state,navigate,getJson}){
  async function renderDetail(){
   renderDetailHeader();
   const request=++detailRequest;
+  const crypto=metaOf(selected)?.market==='CRYPTO';
+  $('research-crypto-sentiment-panel').hidden=!crypto;
+  $('research-crypto-sentiment').innerHTML='';
+  if(crypto){
+   $('research-crypto-sentiment-status').textContent='Consultando CoinGecko…';
+   getJson('/api/crypto-sentiment').then(data=>{
+    if(request!==detailRequest)return;
+    if(data.status!=='available'||!Number.isFinite(data.score))throw Error('Índice indisponível');
+    $('research-crypto-sentiment').innerHTML='<div><span>Fear & Greed global</span><strong>'+num(data.score,0)+' / 100</strong><small>'+esc(data.sentiment)+'</small></div>';
+    $('research-crypto-sentiment-status').textContent='CoinGecko · consulta '+when(data.retrievedAt)+' · indicador global; não é sinal individual de negociação.';
+   }).catch(err=>{
+    if(request!==detailRequest)return;
+    $('research-crypto-sentiment-status').textContent='Sentimento indisponível: '+String(err.message||'falha da fonte')+'.';
+   });
+  }
   $('research-asset-history-status').textContent='Consultando série histórica no provedor…';
   $('research-history-cta').hidden=true;
   $('research-history-alternative').hidden=true;
