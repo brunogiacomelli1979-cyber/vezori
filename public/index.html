@@ -285,6 +285,17 @@
         <section id="view-about" class="view">
           <div class="page-title"><div class="eyebrow">ENGENHARIA & TRANSPARÊNCIA</div><h1>Conexões de mercado</h1><p>O backend consulta os fornecedores, protege as chaves e identifica falhas em vez de criar números fictícios.</p></div>
           <div id="provider-grid" class="provider-grid"></div>
+          <details class="panel section-gap" id="integration-activation">
+            <summary style="cursor:pointer;font-weight:700;color:#8fe8c8">Ativar cobertura completa — configurações pendentes</summary>
+            <div class="integration-instructions" style="padding-top:14px">
+              <p>Para desbloquear históricos de PETR3 e outros ativos brasileiros, crie uma chave gratuita na <a href="https://brapi.dev/" target="_blank" rel="noopener noreferrer">brapi</a> e configure <code>BRAPI_API_KEY</code> como Secret em Cloudflare → Workers & Pages → <strong>vezori</strong> → Settings → Variables and Secrets. Não compartilhe a chave por chat ou GitHub.</p>
+              <p>Para os balanços de Microsoft, Apple e REITs, configure <code>SEC_USER_AGENT</code> no mesmo Worker com um contato verdadeiro da aplicação, respeitando as regras da SEC.</p>
+              <p>Para salvar snapshots diariamente, crie um namespace gratuito Workers KV e vincule-o como <code>MARKET_SNAPSHOTS</code>. O token de deploy atual não conseguiu listar namespaces KV. O site continua operando sem esse armazenamento.</p>
+              <p>Para publicar cotações dos EUA, contrate um plano com direitos de exibição pública. A chave básica da Twelve Data não autoriza automaticamente redistribuição de preços.</p>
+              <p><a href="https://github.com/brunogiacomelli1979-cyber/vezori/issues/2" target="_blank" rel="noopener noreferrer">Acompanhar implantação e pendências no GitHub</a></p>
+            </div>
+          </details>
+
           <div class="panel section-gap api-sourcing"><h3>Dados americanos e atualização</h3><p>A VEZORI adota snapshots de consulta e cache até o próximo corte diário (02:30 UTC). O cache é regional e consultado sob demanda: não equivale a um histórico diário persistente após o fechamento.</p><p>Para ações, ETFs e REITs americanos, a Twelve Data tem cobertura técnica, mas os planos pessoais e gratuitos não autorizam automaticamente a exibição dos preços em um site público. As cotações americanas permanecem desativadas até existir uma licença compatível, independentemente da presença de chave.</p><p>Dados e simulações não são rentabilidade garantida; a data de referência da fonte deve ser conferida antes de decisões.</p></div>
           <div class="panel section-gap"><h3>Política de dados e privacidade</h3><p>Os ativos, transações e custos lançados em Minha Carteira ficam somente no armazenamento local deste navegador. Não existe sincronização entre dispositivos, login ou conexão com contas da Picnic e do Nubank nesta versão. O site não calcula impostos ou rentabilidade líquida tributária automaticamente. Não coloque senhas, tokens, dados bancários ou documentos pessoais nos lançamentos.</p><p>As cotações podem ser de fechamento, com atraso, ou sujeitas à licença de redistribuição. Cada fonte tem condições de uso próprias. A VEZORI é uma plataforma de pesquisa e educação financeira. Não executa ordens nem recomenda investimentos individualizados.</p></div>
         </section>
