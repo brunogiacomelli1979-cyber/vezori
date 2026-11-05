@@ -1,6 +1,7 @@
 /** VEZORI Market API | Cloudflare Workers | production-safe upstream validation. */
 import {SEC_COMPANIES,extractSECAnnualFacts} from './sec-fundamentals.js';
 import {persistDailySnapshot,latestDailySnapshot} from './daily-snapshot.js';
+import {appendDailyObservations,readDailyObservations} from './daily-observations.js';
 export const BR_SYMBOLS=['PETR4','VALE3','ITUB4','MGLU3'];
 export const US_SYMBOLS=['VOO','QQQ','AAPL'];
 export const CRYPTO_BY_SYMBOL=Object.freeze({BTC:'bitcoin',ETH:'ethereum',SOL:'solana'});
@@ -217,13 +218,30 @@ const fail=(message,status)=>respond({error:message,simulatedPrices:false},statu
 export async function collectScheduledMarket(env={},fetcher=fetch,time=new Date()){
  if(!env.MARKET_SNAPSHOTS)return {status:'storage_not_configured'};
  const dashboard=await buildDashboard(env,fetcher);
- return persistDailySnapshot(env.MARKET_SNAPSHOTS,dashboard,time);
+ const daily=await persistDailySnapshot(env.MARKET_SNAPSHOTS,dashboard,time);
+ if(daily.status!=='stored')return daily;
+ try{
+  const archive=await appendDailyObservations(env.MARKET_SNAPSHOTS,dashboard,time);
+  return {...daily,observations:archive};
+ }catch(err){
+  // The main snapshot was persisted; do not incorrectly claim the archive also succeeded.
+  return {...daily,observations:{status:'archive_failed',reason:errorMessage(err)}};
+ }
 }
 export default {
  async fetch(request,env={},ctx={}){
   const url=new URL(request.url),path=url.pathname;
   if(!path.startsWith('/api/'))return env.ASSETS?.fetch?env.ASSETS.fetch(request):new Response('VEZORI: inicialize via Cloudflare Wrangler.',{status:404});
   if(request.method!=='GET')return fail('Método não permitido',405);
+  if(path==='/api/observations'){
+   const market=String(url.searchParams.get('market')||'').toUpperCase(),
+    symbol=String(url.searchParams.get('symbol')||'').toUpperCase(),
+    months=Number(url.searchParams.get('months')||12);
+   if(!['BR','US','CRYPTO'].includes(market)||!/^[A-Z0-9.]{1,12}$/.test(symbol)||!Number.isInteger(months)||months<1||months>24)return fail('Parâmetros inválidos',400);
+   try{
+    return respond(await readDailyObservations(env.MARKET_SNAPSHOTS,{market,symbol,months}),200,900);
+   }catch(err){return fail(errorMessage(err),422);}
+  }
   if(path==='/api/crypto-sentiment'){
    const ttl=Math.min(3600,dailySnapshotCacheSeconds());
    return cacheResult(request,ctx,'/api/crypto-sentiment',ttl,async()=>{
