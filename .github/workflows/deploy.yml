@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  schedule:
+    - cron: '37 12 * * 3'  # Quarta-feira UTC: CVM atualiza arquivos semanalmente
 
 permissions:
   contents: read
