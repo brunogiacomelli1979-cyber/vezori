@@ -29,6 +29,15 @@ Plataforma independente de pesquisa e simulação de investimentos, desenvolvida
 - As carteiras de Buffett, Bogle, Dalio e Graham são **modelos de estudo**, não réplicas reais de gestores.
 - Quando o usuário possui ativos em BRL e USD, a plataforma não inventa câmbio histórico nem combina séries sem conversão válida.
 
+## Atualização 05/11/2026 — faixas indicativas e sentimento
+
+- **Ficha individual:** regiões históricas indicativas de compra e venda e limite de risco ilustrativo, somente quando uma série verificável contém pelo menos 50 fechamentos. O gráfico pode mostrar 1 mês, mas a análise busca uma janela de 3 meses; se não houver cobertura, exibe indisponibilidade sem fabricar níveis.
+- **Metodologia:** quantis de 20%/80% dos últimos 50 fechamentos, médias de 20/50 sessões e buffer estatístico derivado do desvio-padrão amostral dos log-retornos. Essas faixas **não** foram validadas por backtest fora da amostra e não devem ser tratadas como recomendação individual, preço justo ou previsão garantida.
+- **Cripto:** endpoint `GET /api/crypto-sentiment` consulta `/global` da CoinGecko para apresentar o Fear & Greed atual (0–100) quando disponível. É um índice **global** e não uma indicação individual para BTC/ETH/SOL. O endpoint histórico de Fear & Greed exige plano Analyst; não foi implementada simulação de retrospectiva nem contratação paga.
+- **Testes:** `tests/price-zones.test.js` valida determinismo, amostra insuficiente, séries com conflito, lacunas e volatilidade nula. O workflow realiza smoke test pós-deploy para os novos recursos.
+- **Dependências pendentes:** BRAPI_API_KEY para ampliar histórico brasileiro, COINGECKO_API_KEY Demo para histórico cripto, licença apropriada para exibição pública dos EUA, e KV para armazenamento histórico persistente. Nenhuma chave foi publicada no repositório.
+- **Escopo:** a análise é de preço histórico, não incorpora múltiplos fundamentalistas completos, liquidez, spread, impostos ou preço de aquisição pessoal. Não há integração de ordens na corretora.
+
 ## Configurações externas para cobertura completa
 
 As seguintes configurações **não** devem ser fornecidas em chats nem inseridas no repositório:
