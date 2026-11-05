@@ -257,6 +257,21 @@
   </div>
   <p class="lab-footer-note">Este laboratório não representa recomendação personalizada, retorno esperado, backtest ou previsão. Classificações como ouro, títulos e commodities são cenários de categoria sem ativo real selecionado. A cotação ao lado do ticker é informativa, não entra na conta. Sem rebalanceamento, imposto, taxa de administração, câmbio, inflação ou volatilidade.</p>
 </div>
+          <details id="lab-risk-study" class="lab-risk-study">
+  <summary><span><strong>Risco histórico dos ativos</strong><small>Compare drawdown e volatilidade dos preços realmente disponíveis nas APIs</small></span><span class="lab-risk-summary-arrow" aria-hidden="true">⌄</span></summary>
+  <div class="lab-risk-body">
+   <p class="lab-risk-intro">Esta análise é independente do simulador de juros compostos. Selecione até cinco ativos reais da composição e consulte seu histórico de preço. Classes hipotéticas não participam; não fazemos projeções nem combinamos valores de moedas diferentes.</p>
+   <div id="lab-risk-assets" class="lab-risk-assets" role="group" aria-label="Escolher ativos para análise de risco"></div>
+   <div class="lab-risk-controls">
+    <label class="lab-risk-period-label">Período de observação <select id="lab-risk-period"><option value="1mo">1 mês</option><option value="3mo" selected>3 meses</option></select></label>
+    <button id="lab-risk-run" class="lab-outline" type="button">Consultar risco histórico</button>
+   </div>
+   <p id="lab-risk-status" class="lab-risk-status" role="status">Selecione ativos para consultar séries históricas reais sob demanda.</p>
+   <div class="lab-risk-table-scroll"><table class="lab-results-table lab-risk-table"><thead><tr><th>Ativo e origem</th><th>Retorno de preço</th><th>Maior drawdown</th><th>Volatilidade a.a.</th><th>Amostra</th></tr></thead><tbody id="lab-risk-rows"></tbody></table></div>
+   <p class="lab-risk-footnote">O retorno apresentado é somente o do preço: não constitui rentabilidade total com dividendos, custos ou câmbio. A volatilidade exige ao menos 30 retornos diários válidos e usa 252 sessões/ano para ações ou 365 para cripto. Não há Sharpe sem taxa livre de risco explícita na mesma moeda. Não é backtest de carteira.</p>
+  </div>
+ </details>
+
           <div class="panel section-gap"><div class="panel-head"><div><span class="eyebrow">SIMULAÇÃO HIPOTÉTICA</span><h3>Simulador rápido com taxa única</h3></div><span class="lab-badge">NÃO É PREVISÃO</span></div><form id="sim-form" class="sim-controls"><label>Capital inicial (R$)<input id="sim-initial" type="number" min="0" value="10000" step="100" /></label><label>Aporte mensal (R$)<input id="sim-monthly" type="number" min="0" value="300" step="50" /></label><label>Taxa anual hipotética (%)<input id="sim-rate" type="number" min="-95" max="200" value="8" step="0.5" /></label><label>Horizonte (anos)<input id="sim-years" type="number" min="1" max="40" value="10" step="1" /></label><button class="button primary" type="submit">Simular</button></form><div id="sim-result" class="sim-result"></div><div id="sim-chart" class="sim-chart" aria-label="Gráfico de projeção hipotética"></div><p class="micro-note">Projeção nominal, com aportes ao fim de cada mês, sem impostos, inflação, custos, câmbio ou garantia de rentabilidade. Não representa desempenho passado de nenhuma estratégia.</p></div>
         </section>
         <section id="view-about" class="view">

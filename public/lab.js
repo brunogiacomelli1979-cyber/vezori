@@ -3,6 +3,7 @@
  * Does not modify live positions or simulate trade execution.
  */
 import {ASSETS,STRATEGIES} from './finance.js';
+import {analyzeAssetRisk} from './risk-analytics.js';
 
 export const LAB_BUCKETS=Object.freeze({
   RF_SIM:{name:'Renda fixa / títulos · classe hipotética',currency:'BRL',market:'SIM',assetClass:'fixed',hypothetical:true},
@@ -100,9 +101,10 @@ export function inspectStudyAssumptions(rows,result=null){
  return {high,possibleMixup,fixedHigh,dominant,requiresConfirmation:high.length>0||possibleMixup||fixedHigh.length>0};
 }
 
-export function createLabBuilder({state}){
+export function createLabBuilder({state,getJson}){
  const $=id=>document.getElementById(id);
  let active=0,drafts={},holdings=suggestedPortfolio(0),params={...LAB_DEFAULTS},initialized=false;
+ let riskSelection=new Set(),riskRequest=0;
  const note='As taxas pré-preenchidas são exemplos arbitrários para exercício, NÃO expectativas de retorno. Você pode alterá-las ou zerá-las; as cotações reais não determinam o resultado matemático.';
  function liveMeta(symbol){return assetMeta(symbol,state.catalog||[]);}
  function latest(symbol){
@@ -172,6 +174,67 @@ export function createLabBuilder({state}){
   $('lab-rows').innerHTML=rows||'<tr><td colspan="4">Nenhum ativo selecionado. Escolha um ativo e adicione-o.</td></tr>';
   weightStatus();
  }
+
+ function eligibleRiskRows(){
+  return holdings.filter(row=>{
+   const meta=liveMeta(row.symbol);
+   return meta&&!meta.hypothetical&&['BR','US','CRYPTO'].includes(meta.market)&&/^[A-Z0-9.]{2,12}$/.test(row.symbol);
+  });
+ }
+ function invalidateRisk(message='Escolha até cinco ativos reais para consultar risco histórico.'){
+  riskRequest++;
+  $('lab-risk-rows').innerHTML='';
+  $('lab-risk-status').textContent=message;
+ }
+ function renderRiskOptions(){
+  const supported=eligibleRiskRows(),ids=new Set(supported.map(row=>row.symbol));
+  for(const symbol of riskSelection)if(!ids.has(symbol))riskSelection.delete(symbol);
+  $('lab-risk-assets').innerHTML=supported.length?
+   supported.map(row=>'<label class="lab-risk-option"><input type="checkbox" data-lab-risk-symbol="'+esc(row.symbol)+'" '+(riskSelection.has(row.symbol)?'checked':'')+' /><span>'+esc(row.symbol)+'</span></label>').join(''):
+   '<p class="lab-risk-empty">A composição não contém ativos negociados. Substitua uma classe ilustrativa para consultar histórico.</p>';
+  $('lab-risk-run').disabled=riskSelection.size===0;
+ }
+ async function runRiskStudy(){
+  invalidateRisk('Consultando históricos reais por ativo…');
+  const request=riskRequest,selection=[...riskSelection];
+  if(!selection.length){$('lab-risk-status').textContent='Selecione pelo menos um ativo real.';return;}
+  const range=$('lab-risk-period').value;
+  const reports=[];
+  for(let i=0;i<selection.length;i+=2){
+   const batch=await Promise.allSettled(selection.slice(i,i+2).map(async symbol=>{
+    const meta=liveMeta(symbol);
+    if(!meta||!['BR','US','CRYPTO'].includes(meta.market))throw Error('Mercado indisponível');
+    const series=await getJson('/api/history?market='+meta.market+'&symbol='+encodeURIComponent(symbol)+'&range='+range);
+    if(series.symbol!==symbol||series.market!==meta.market)throw Error('Contrato de série histórica inconsistente');
+    return analyzeAssetRisk(series);
+   }));
+   if(request!==riskRequest)return;
+   batch.forEach((out,j)=>reports.push({symbol:selection[i+j],out}));
+  }
+  if(request!==riskRequest)return;
+  let successes=0;const currencies=new Set(),basis=new Set();
+  const pct=n=>n===null?'—':fmt(n)+'%';
+  $('lab-risk-rows').innerHTML=reports.map(({symbol,out})=>{
+   if(out.status==='rejected'){
+    const message=String(out.reason?.message||'Fonte indisponível').slice(0,140);
+    return '<tr><td><strong>'+esc(symbol)+'</strong><small>Indisponível</small></td><td colspan="4" class="lab-risk-unavailable">'+esc(message)+'</td></tr>';
+   }
+   successes++;
+   const risk=out.value;
+   currencies.add(risk.currency);basis.add(risk.priceBasis);
+   return '<tr><td><strong>'+esc(symbol)+'</strong><small>'+esc(risk.provider+' · '+risk.currency+' · '+risk.firstDate+' — '+risk.lastDate)+'</small></td>'+
+    '<td class="'+(risk.returnPct<0?'lab-negative':'lab-positive')+'">'+esc(pct(risk.returnPct))+'</td>'+
+    '<td>'+esc(pct(risk.maxDrawdownPct))+'</td><td>'+esc(pct(risk.volatilityAnnualPct))+'</td>'+
+    '<td>'+risk.observations+' fechamentos</td></tr>';
+  }).join('');
+  const comparisons=[];
+  if(currencies.size>1)comparisons.push('Atenção: há preços em moedas diferentes; os retornos não estão convertidos para a mesma moeda.');
+  if(basis.size>1)comparisons.push('Os fornecedores podem usar bases de preços com ajustes diferentes.');
+  if(successes>0){
+   $('lab-risk-status').textContent=successes+' de '+selection.length+' ativos com histórico suficiente para ao menos retorno e drawdown; '+(selection.length-successes)+' indisponíveis. '+comparisons.join(' ');
+  }else $('lab-risk-status').textContent='Nenhum ativo selecionado retornou histórico diário verificável neste plano ou nesta consulta. Não foram criadas métricas artificiais.';
+ }
+
  function renderSuggestions(){
   const s=STRATEGIES[active],preset=LAB_PRESETS[active];
   $('lab-model').value=String(active);
@@ -188,12 +251,15 @@ export function createLabBuilder({state}){
   $('lab-monthly').value=String(params.monthly);
   $('lab-years').value=String(params.years);
   renderHoldings();
+  renderRiskOptions();
  }
  function selectModel(index){
   if(!Number.isInteger(index)||index<0||index>=LAB_PRESETS.length)return;
   if(initialized)save();active=index;
   const d=drafts[index];holdings=d?d.holdings.map(r=>({...r})):suggestedPortfolio(index);
   params=d?{...d.params}:{...LAB_DEFAULTS};
+  riskSelection=new Set(eligibleRiskRows().slice(0,5).map(row=>row.symbol));
+  invalidateRisk();
   $('lab-error').textContent='';$('lab-assumption-ack').checked=false;renderSuggestions();clearResult();initialized=true;
    $('lab-message').textContent=holdings.every(r=>r.rate===0)?
     'Todas as taxas estão em 0% a.a.: este cenário terá apenas o capital aportado. Para testar ganhos e perdas, aplique hipóteses ilustrativas ou edite cada taxa.':note;
@@ -213,6 +279,7 @@ export function createLabBuilder({state}){
   }
   holdings.push({symbol,weight:moved,rate:0});
   setError('');save();renderSuggestions();clearResult();
+  invalidateRisk('A composição mudou. Consulte novamente os históricos.');
   $('lab-message').textContent=from?`${symbol} adicionado com ${fmt(moved)}% transferidos de ${from}. Confira e ajuste os pesos.`:`${symbol} adicionado com 100% da carteira. Você pode dividir o peso entre outros ativos.`;
  }
  function setError(message){$('lab-error').textContent=message||'';}
@@ -248,12 +315,21 @@ export function createLabBuilder({state}){
   restore();
   $('lab-model').innerHTML=STRATEGIES.map((s,i)=>`<option value="${i}">${esc(s.title)}</option>`).join('');
   $('lab-model').addEventListener('change',e=>selectModel(Number(e.target.value)));
+  $('lab-risk-assets').addEventListener('change',event=>{
+   const box=event.target.closest('[data-lab-risk-symbol]');if(!box)return;
+   const symbol=box.dataset.labRiskSymbol;
+   if(box.checked&&riskSelection.size>=5){box.checked=false;$('lab-risk-status').textContent='Máximo de cinco ativos por consulta para respeitar os limites das APIs.';return;}
+   if(box.checked)riskSelection.add(symbol);else riskSelection.delete(symbol);
+   invalidateRisk();renderRiskOptions();
+  });
+  $('lab-risk-period').addEventListener('change',()=>invalidateRisk('O período mudou. Consulte novamente os históricos.'));
+  $('lab-risk-run').addEventListener('click',runRiskStudy);
   $('strategies-grid').addEventListener('click',e=>{
    const button=e.target.closest('[data-lab-template]');if(!button)return;
    selectModel(Number(button.dataset.labTemplate));$('lab-builder').scrollIntoView({behavior:'smooth',block:'start'});
   });
   $('lab-reset').addEventListener('click',()=>{
-   holdings=suggestedPortfolio(active);params={...LAB_DEFAULTS};$('lab-assumption-ack').checked=false;save();setError('');renderSuggestions();clearResult();
+   holdings=suggestedPortfolio(active);params={...LAB_DEFAULTS};riskSelection=new Set(eligibleRiskRows().slice(0,5).map(row=>row.symbol));invalidateRisk();$('lab-assumption-ack').checked=false;save();setError('');renderSuggestions();clearResult();
   });
   $('lab-add').addEventListener('click',()=>add($('lab-add-asset').value));
   $('lab-alternatives').addEventListener('click',e=>{const b=e.target.closest('[data-lab-alt]');if(b)add(b.dataset.labAlt);});
@@ -273,7 +349,7 @@ export function createLabBuilder({state}){
     const largest=holdings.reduce((best,row)=>row.weight>best.weight?row:best,holdings[0]);
     largest.weight=Math.round((largest.weight+removed.weight)*1000)/1000;
    }
-   save();renderSuggestions();clearResult();
+   save();renderSuggestions();clearResult();invalidateRisk('A composição mudou. Consulte novamente os históricos.');
   });
   for(const [id,key] of [['lab-initial','initial'],['lab-monthly','monthly'],['lab-years','years']]){
    $(id).addEventListener('input',e=>{params[key]=e.target.value===''?NaN:Number(e.target.value);save();clearResult();});

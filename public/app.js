@@ -284,6 +284,6 @@ function init(){
  });
  $('sim-form').addEventListener('submit',event=>{event.preventDefault();simulationView();});
  $('lookup-form').addEventListener('submit',lookup);$('history-form').addEventListener('submit',history);
- overviewStrategyPreview();strategiesView();labBuilder=createLabBuilder({state});labBuilder.mount();simulationView();portfolioView();changeOperationUI();refresh();
+ overviewStrategyPreview();strategiesView();labBuilder=createLabBuilder({state,getJson});labBuilder.mount();simulationView();portfolioView();changeOperationUI();refresh();
 }
 init();

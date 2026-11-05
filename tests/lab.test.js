@@ -115,3 +115,13 @@ test('captura do usuário: taxa anual confundida com peso aciona alerta de conce
  assert.ok(flags.dominant.finalWeight>93);
  assert.equal(inspectStudyAssumptions(suggestedPortfolio(2)).requiresConfirmation,false);
 });
+
+test('laboratório oferece análise histórica separada das taxas hipotéticas',()=>{
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const module=readFileSync(new URL('../public/lab.js',import.meta.url),'utf8');
+ const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ for(const id of ['lab-risk-study','lab-risk-assets','lab-risk-period','lab-risk-run','lab-risk-rows','lab-risk-status'])assert.match(html,new RegExp('id="'+id+'"'));
+ assert.match(html,/não fazemos projeções/);
+ assert.match(module,/analyzeAssetRisk\(series\)/);
+ assert.match(app,/createLabBuilder\(\{state,getJson\}\)/);
+});

@@ -98,3 +98,32 @@
 .lab-high-return-confirm{display:flex;align-items:center;gap:9px;color:#ffd9a1;font-size:11px;line-height:1.45;cursor:pointer;margin:8px 0 14px}
 .lab-high-return-confirm input{accent-color:#f59e0b;width:18px;height:18px;flex:none}
 .lab-result-caution{font-size:12px;color:#ffd28e;line-height:1.5;margin:9px 0}
+
+/* Dados observados: seção opcional e recolhida para não alongar o laboratório. */
+.lab-risk-study{background:#111a29;border:1px solid rgba(148,163,184,.22);border-radius:12px;margin:18px 0;overflow:hidden}
+.lab-risk-study>summary{padding:18px 20px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:16px;list-style:none}
+.lab-risk-study>summary::-webkit-details-marker{display:none}
+.lab-risk-study>summary strong{display:block;font-size:16px;font-weight:750;color:#eaf3f8}
+.lab-risk-study>summary small{display:block;font-size:11px;line-height:1.5;color:#98abc0;margin-top:5px}
+.lab-risk-study .lab-risk-summary-arrow{font-size:23px;color:#40d0a8;transition:transform .15s ease}
+.lab-risk-study[open] .lab-risk-summary-arrow{transform:rotate(180deg)}
+.lab-risk-body{padding:3px 20px 22px;border-top:1px solid rgba(148,163,184,.16)}
+.lab-risk-intro,.lab-risk-footnote{font-size:11px;line-height:1.7;color:#91a9bc;margin:13px 0}
+.lab-risk-assets{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}
+.lab-risk-option{display:flex;align-items:center;gap:8px;border:1px solid rgba(148,163,184,.28);background:#142134;color:#d3e5ef;padding:9px 12px;border-radius:8px;font-size:12px;font-weight:750;cursor:pointer}
+.lab-risk-option:has(input:checked){border-color:#1ba77f;background:rgba(16,185,129,.12);color:#8dedc9}
+.lab-risk-option input{accent-color:#10b981;width:16px;height:16px;margin:0}
+.lab-risk-empty{font-size:12px;color:#9ab0c2}
+.lab-risk-controls{display:flex;flex-wrap:wrap;gap:12px;align-items:end;margin:12px 0}
+.lab-risk-controls .lab-risk-period-label{display:flex;flex-direction:column;gap:7px;font-size:11px;color:#9db3c7}
+.lab-risk-period-label select{border:1px solid #304156;border-radius:8px;background:#0b1320;color:#eaf3f9;min-width:140px;min-height:43px;padding:8px}
+.lab-risk-controls button{min-height:43px}
+.lab-risk-controls button:disabled{opacity:.4;cursor:not-allowed}
+.lab-risk-status{min-height:22px;color:#b8cfde;font-size:11px;line-height:1.6;margin:13px 0}
+.lab-risk-table-scroll{max-width:100%;overflow-x:auto}
+.lab-risk-table{min-width:630px;width:100%}
+.lab-risk-table td small{display:block;margin-top:5px;color:#8fa6b8;line-height:1.4;font-size:10px}
+.lab-risk-table .lab-risk-unavailable{font-size:11px;color:#e9bb85;white-space:normal}
+.lab-risk-study .lab-positive{color:#45d2a4}
+.lab-risk-study .lab-negative{color:#ff8c94}
+@media(max-width:650px){.lab-risk-study>summary{padding:15px}.lab-risk-body{padding:4px 14px 16px}.lab-risk-controls{align-items:stretch}.lab-risk-controls button{flex:1}}
