@@ -135,35 +135,68 @@ export function createResearchTools({state,navigate,getJson}){
   const filed=record?.filed?' · publicado '+record.filed:'';
   return '<div><span>'+esc(label)+'</span><strong>'+esc(displayed)+'</strong><small>'+esc(date+filed)+'</small></div>';
  }
+
+ function cvmMoney(value){
+  if(typeof value!=='number'||!Number.isFinite(value))return '—';
+  const n=Math.abs(value),d=n>=1e12?1e12:n>=1e9?1e9:n>=1e6?1e6:1;
+  return 'R$ '+new Intl.NumberFormat('pt-BR',{maximumFractionDigits:2}).format(value/d)+(d===1e12?' tri':d===1e9?' bi':d===1e6?' mi':'');
+ }
+ function cvmFact(row){
+  return '<div><span>'+esc(String(row.label||row.accountCode||'Conta CVM').slice(0,110))+'</span><strong>'+esc(cvmMoney(row.valueBRL))+'</strong>'+
+    '<small>'+esc(row.statement+' · conta '+row.accountCode+' · revisão '+row.version)+'</small></div>';
+ }
  async function renderFundamentals(){
-  const id=++fundamentalRequest;
-  const box=$('research-fundamental-grid'),status=$('research-fundamental-status');
-  if(!box||!status)return;
-  box.innerHTML='';
-  status.textContent='Verificando cobertura fundamentalista do ativo…';
-  if(metaOf(selected)?.market!=='US'||selected!=='AAPL'){
-   status.textContent='Fundamentos contábeis ainda não integrados para esta classe/empresa. Arquivos oficiais CVM e SEC estão sendo preparados; não exibimos múltiplos sem fonte.';
+  const id=++fundamentalRequest,grid=$('research-fundamental-grid'),status=$('research-fundamental-status');
+  if(!grid||!status)return;
+  grid.innerHTML='';
+  const source=$('research-fundamental-document'),method=$('research-fundamental-method');
+  if(source)source.hidden=true;
+  if(method)method.textContent='';
+  status.textContent='Consultando demonstrativos oficiais disponíveis…';
+  const market=metaOf(selected)?.market;
+  if(market!=='BR'&&market!=='US'){
+   status.textContent='Demonstrações contábeis corporativas não se aplicam diretamente a este tipo de ativo.';
    return;
   }
   try{
-   const d=await getJson('/api/fundamentals?market=US&symbol='+encodeURIComponent(selected));
+   const data=await getJson('/api/fundamentals?market='+market+'&symbol='+encodeURIComponent(selected));
    if(id!==fundamentalRequest)return;
-   if(d.status!=='available'){
-    status.textContent=d.message||'Demonstrações anuais não disponíveis na configuração atual.';
+   if(market==='BR'){
+    if(data.status!=='verified_accounts'){
+     status.textContent=data.message||'Sem demonstração oficial validada e publicada para este ticker.';
+     return;
+    }
+    const priority=['3.01','3.09','3.11','1','2.03','6.01'];
+    const chosen=priority.map(code=>data.accounts.find(x=>x.accountCode===code&&Number.isFinite(x.valueBRL))).filter(Boolean);
+    const available=data.accounts.filter(x=>Number.isFinite(x.valueBRL));
+    grid.innerHTML=(chosen.length>=3?chosen:available).slice(0,6).map(cvmFact).join('');
+    status.textContent='CVM DFP · '+data.issuer+' · exercício '+data.statementYear+' · encerramento '+data.periodEnd+
+      ' · consolidadas. Contas oficiais e revisões; não são múltiplos de valuation.';
+    if(source&&data.sourceUrl?.startsWith('https://dados.cvm.gov.br/')){
+     source.hidden=false;source.href=data.sourceUrl;source.textContent='Abrir arquivo DFP oficial da CVM';
+    }
+    if(method)method.textContent=(data.methodology||'')+' '+(data.limitations||'');
     return;
    }
-   const m=d.metrics||{};
-   box.innerHTML=secMetric('Receita anual (10-K)',m.revenue)+secMetric('Lucro líquido anual',m.netIncome)+
+   if(data.status!=='available'){
+    status.textContent=data.message||'Demonstrações SEC indisponíveis na configuração atual.';
+    return;
+   }
+   const m=data.metrics||{};
+   grid.innerHTML=secMetric('Receita anual (10-K)',m.revenue)+secMetric('Lucro líquido anual',m.netIncome)+
     secMetric('Ativos totais',m.assets)+secMetric('Passivos totais',m.liabilities)+
-    secMetric('Margem líquida (anual)',m.netMarginPct,'%')+secMetric('ROE anual (PL médio)',m.roePct,'%');
-   status.textContent='SEC EDGAR · '+d.companyName+' · encerramento '+d.periodEnd+
-    ' · demonstrações US-GAAP. Valores não representam P/L, P/VP nem dividend yield. Fontes e datas constam em cada indicador.';
+    secMetric('Margem líquida anual',m.netMarginPct,'%')+secMetric('ROE (patrimônio médio)',m.roePct,'%');
+   status.textContent='SEC EDGAR · '+data.companyName+' · exercício '+data.periodEnd+
+     ' · demonstrações US-GAAP; não equivalem a P/L, P/VP ou dividend yield.';
+   if(source&&data.sourceUrl?.startsWith('https://data.sec.gov/')){
+    source.hidden=false;source.href=data.sourceUrl;source.textContent='Abrir demonstrações oficiais da SEC';
+   }
+   if(method)method.textContent=data.methodology||'';
   }catch(err){
    if(id!==fundamentalRequest)return;
-   status.textContent='Fundamentos indisponíveis: '+(err.message||'falha de fornecedor')+'. Nenhum dado foi estimado.';
+   status.textContent='Sem fundamentos verificáveis para este ativo: '+String(err.message||'fonte indisponível').slice(0,130);
   }
  }
-
  function renderDetailHeader(){
   const q=quote(selected),meta=metaOf(selected);
   $('research-asset-name').textContent=`${selected} · ${meta.name}`;
