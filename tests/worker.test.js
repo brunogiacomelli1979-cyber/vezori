@@ -196,3 +196,11 @@ test('dossiê CVM brasileiro preserva ticker e hash de origem',async()=>{
  const bad=await worker.fetch(new Request(url),{ASSETS:{async fetch(){return new Response(JSON.stringify({...d,symbol:'ITUB4'}));}}},{});
  assert.equal(bad.status,503);
 });
+
+
+test('a integração brapi distingue cobertura gratuita sem chave de plano com chave',async()=>{
+ const basic=await buildDashboard({},fakeFetch);
+ assert.equal(basic.availability.brapi,'sandbox_only');
+ const withKey=await buildDashboard({BRAPI_API_KEY:'test-key'},fakeFetch);
+ assert.equal(withKey.availability.brapi,'available');
+});
