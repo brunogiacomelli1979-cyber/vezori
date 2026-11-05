@@ -50,7 +50,7 @@ test('layout Apex integrado com dados reais e módulos anteriores',()=>{
 });
 
 test('VEZORI 2.0 mantém módulos e conecta exploração e comparação',()=>{
- for(const name of ['overview','dashboard','market','compare','portfolio','strategies','about']){
+ for(const name of ['overview','dashboard','market','compare','strategies','about']){
   assert.ok(html.includes('id="view-'+name+'"'));
   assert.ok(html.includes('data-view="'+name+'"'));
  }
@@ -75,4 +75,14 @@ test('cenário com todas as taxas 0 exibe aviso e opção de hipóteses didátic
  assert.match(html,/id="lab-zero-warning"/);
  assert.match(html,/id="lab-use-illustrative"/);
  assert.match(app,/createLabBuilder/);
+});
+
+test('carteira e lançamentos em única tela e sem duplicar opção no menu',()=>{
+ assert.doesNotMatch(html,/class="nav" data-view="portfolio"/);
+ assert.doesNotMatch(html,/id="view-portfolio"/);
+ assert.match(html,/id="portfolio-operations"/);
+ assert.match(html,/id="transaction-form"/);
+ assert.match(html,/id="transactions-table"/);
+ assert.match(html,/id="apex-new-asset"/);
+ assert.match(app,/focusOperations=view==='portfolio'/);
 });

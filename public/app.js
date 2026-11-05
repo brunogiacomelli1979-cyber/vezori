@@ -148,7 +148,9 @@ function simulationView(){
  }catch(e){$('sim-result').textContent=e.message;$('sim-chart').innerHTML='';}
 }
 function navigate(view){
- if(!['overview','dashboard','market','asset','compare','portfolio','strategies','about'].includes(view))return;
+ const focusOperations=view==='portfolio';
+ if(focusOperations)view='dashboard';
+ if(!['overview','dashboard','market','asset','compare','strategies','about'].includes(view))return;
  state.active=view;
  document.querySelectorAll('.view').forEach(el=>el.classList.toggle('active',el.id==='view-'+view));
  document.querySelectorAll('.nav').forEach(el=>el.classList.toggle('active',el.dataset.view===(view==='asset'?'overview':view)));
@@ -159,7 +161,8 @@ function navigate(view){
  researchTools?.onNavigate(view);
  if(view==='dashboard')apexUI?.render();
  if(view==='strategies')labBuilder?.refreshQuotes();
- window.scrollTo({top:0,behavior:'instant'});
+ if(focusOperations)document.getElementById('portfolio-operations')?.scrollIntoView({behavior:'smooth',block:'start'});
+ else window.scrollTo({top:0,behavior:'instant'});
 }
 async function getJson(url){
  const response=await fetch(url,{headers:{accept:'application/json'}});
