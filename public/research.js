@@ -75,7 +75,7 @@ export function createResearchTools({state,navigate,getJson}){
  const historyKey=(symbol,range)=>`${symbol}:${range}`;
  const fetchHistory=async(symbol,range)=>{
   if(!supported(symbol))throw Error('Ativo não suportado');
-  if(!['1mo','3mo'].includes(range))throw Error('Período inválido');
+  if(!['1mo','3mo','6mo','1y','2y','5y','10y','max'].includes(range))throw Error('Período inválido');
   const key=historyKey(symbol,range),cached=historyCache.get(key);
   if(cached&&Date.now()-cached.time<600000)return cached.promise;
   const promise=getJson(`/api/history?market=${metaOf(symbol).market}&symbol=${encodeURIComponent(symbol)}&range=${range}`)
@@ -247,14 +247,14 @@ export function createResearchTools({state,navigate,getJson}){
    const summary=summarizeHistory(series);
    if(!summary)throw Error('Menos de dois fechamentos válidos no período');
    const points=series.points.filter(validPoint).slice().sort((a,b)=>a.date.localeCompare(b.date));
-   $('research-asset-history-status').textContent=`${summary.count} observações · ${series.provider} · ${summary.first} a ${summary.last} · ${series.priceBasis}`;
+   $('research-asset-history-status').textContent=`${summary.count} observações · ${series.provider} · ${summary.first} a ${summary.last} · ${series.priceBasis} · ${series.coverage?.reason||'Cobertura integral não confirmada'}`;
    $('research-asset-details').innerHTML=`<div><span>Retorno de preço no período</span><strong class="${delta(summary.returnPct)}">${percent(summary.returnPct)}</strong></div><div><span>Menor fechamento</span><strong>${currency(summary.min,series.currency)}</strong></div><div><span>Maior fechamento</span><strong>${currency(summary.max,series.currency)}</strong></div><div><span>Último fechamento</span><strong>${currency(summary.lastClose,series.currency)}</strong></div>`;
    setChart('detail',points.map(p=>p.date),[{symbol:selected,values:points.map(p=>p.close)}]);
    // A janela de análise usa 3 meses, mesmo quando o gráfico mostra 1 mês.
    try{
     const zoneSeries=period==='3mo'?series:await fetchHistory(selected,'3mo');
     if(request!==detailRequest)return;
-    const zones=suggestPriceZones(zoneSeries);
+    const zones=suggestPriceZones({...zoneSeries,points:zoneSeries.points.slice(-1000)});
     const fmt=n=>currency(n,zones.currency);
     $('research-price-zones').innerHTML=
      '<div><span>Faixa de compra indicativa</span><strong class="positive">'+fmt(zones.buy[0])+' – '+fmt(zones.buy[1])+'</strong><small>Suporte estatístico + volatilidade</small></div>'+
@@ -271,7 +271,7 @@ export function createResearchTools({state,navigate,getJson}){
    $('research-history-cta').hidden=true;
    $('research-history-nextstep').textContent='';
    try{
-    const risk=analyzeAssetRisk(series);
+    const risk=analyzeAssetRisk({...series,points:series.points.slice(-1000)});
     const pct=value=>value===null?'—':num(value)+'%';
     $('research-risk-metrics').innerHTML=
      '<div><span>Drawdown máximo (preço)</span><strong>'+esc(pct(risk.maxDrawdownPct))+'</strong><small>Queda máxima desde um pico observado</small></div>'+
