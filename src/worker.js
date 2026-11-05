@@ -219,9 +219,17 @@ export async function collectScheduledMarket(env={},fetcher=fetch,time=new Date(
  if(!env.MARKET_SNAPSHOTS)return {status:'storage_not_configured'};
  const dashboard=await buildDashboard(env,fetcher);
  const daily=await persistDailySnapshot(env.MARKET_SNAPSHOTS,dashboard,time);
- if(daily.status!=='stored')return daily;
+ if(!['stored','already_recorded'].includes(daily.status))return daily;
  try{
-  const archive=await appendDailyObservations(env.MARKET_SNAPSHOTS,dashboard,time);
+  // Recovery: if snapshot persisted but archive failed earlier, retry using the
+  // original captured snapshot, never a different quote obtained on rerun.
+  let archiveMarket=dashboard;
+  if(daily.status==='already_recorded'){
+   const saved=await env.MARKET_SNAPSHOTS.get('vezori:market:'+daily.captureDate,'json');
+   if(!saved||saved.schemaVersion!==1||!saved.data)return {...daily,observations:{status:'snapshot_missing'}};
+   archiveMarket=saved.data;
+  }
+  const archive=await appendDailyObservations(env.MARKET_SNAPSHOTS,archiveMarket,time);
   return {...daily,observations:archive};
  }catch(err){
   // The main snapshot was persisted; do not incorrectly claim the archive also succeeded.
