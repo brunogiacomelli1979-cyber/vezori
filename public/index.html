@@ -13,7 +13,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/apex.css?v=13" />
   <link rel="stylesheet" href="/research.css?v=20" />
-  <link rel="stylesheet" href="/home.css?v=22" />
+  <link rel="stylesheet" href="/home.css?v=24" />
   <link rel="stylesheet" href="/lab.css?v=23" />
   <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
   <script type="module" src="/app.js"></script>
@@ -38,7 +38,7 @@
         <button class="nav" data-view="about" type="button"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M17.5 13.5v8m-4-4h8"/></svg> Integrações</button>
       </nav>
       <div class="sidebar-bottom"><span class="sidebar-dot" aria-hidden="true"></span><div><strong>Fontes de mercado</strong><br/><small id="sidebar-source-status">Aguardando atualização</small></div></div>
-      <div class="sidebar-footnote"><span class="footnote-glyph" aria-hidden="true">V.</span><span>VEZORI <small>PLATAFORMA DE PESQUISA</small></span><span class="footnote-version">v2.3</span></div>
+      <div class="sidebar-footnote"><span class="footnote-glyph" aria-hidden="true">V.</span><span>VEZORI <small>PLATAFORMA DE PESQUISA</small></span><span class="footnote-version">v2.4</span></div>
     </aside>
     <div class="main-frame">
       <header class="topbar">
@@ -54,8 +54,8 @@
           <div class="home-head">
             <div class="home-heading">
               <div class="home-eyebrow">VEZORI / MERCADOS</div>
-              <h1>Encontre seu próximo investimento.</h1>
-              <p>Explore ações brasileiras, ativos internacionais e criptomoedas. Selecione qualquer ativo para abrir a análise.</p>
+              <h1>O mercado em perspectiva</h1>
+              <p>Altas, baixas e ativos de diferentes mercados. Escolha um instrumento para analisar ou pesquise pelo nome.</p>
             </div>
             <div class="home-head-aside">
               <span class="home-status" id="home-status" aria-live="polite">Consultando fontes de mercado…</span>
@@ -67,8 +67,12 @@
             <div class="home-indicator"><span>Câmbio EUR / BRL</span><strong>—</strong><small>Consultando</small></div>
             <div class="home-indicator"><span>Meta Selic</span><strong>—</strong><small>Consultando</small></div>
           </div>
+          <div id="home-rankings" class="market-rank-grid" aria-label="Rankings compactos de mercado">
+            <div class="market-rank-loading">Preparando rankings a partir das cotações recebidas…</div>
+          </div>
+          <p class="market-rank-scope">Os rankings consideram apenas ativos da B3 carregados nesta consulta. Não representam o mercado inteiro e não incluem dividendos.</p>
           <div class="home-catalog-heading">
-            <div><h2>Ativos disponíveis para pesquisa</h2><p>Ativos brasileiros da listagem pública da B3, além de mercados internacionais e criptoativos. Escolha um para analisar.</p></div>
+            <div><h2>Explore por mercado</h2><p>Uma prévia curta para começar. Use a busca ou pesquisa avançada para acessar mais ativos.</p></div>
             <span id="home-catalog-total" aria-live="polite">Carregando universo de ativos…</span>
           </div>
           <div class="home-toolbar">
@@ -77,7 +81,7 @@
             </label>
             <div class="home-filters" id="home-filters" role="group" aria-label="Filtrar mercado">
               <button type="button" data-home-filter="all" aria-pressed="true" class="active">Todos</button>
-              <button type="button" data-home-filter="BR" aria-pressed="false">Ações Brasil</button>
+              <button type="button" data-home-filter="BR" aria-pressed="false">B3</button><button type="button" data-home-filter="FUNDS" aria-pressed="false">FIIs / ETFs</button><button type="button" data-home-filter="BDR" aria-pressed="false">BDRs</button>
               <button type="button" data-home-filter="US" aria-pressed="false">Exterior / ETFs</button>
               <button type="button" data-home-filter="CRYPTO" aria-pressed="false">Criptomoedas</button>
             </div>
@@ -245,7 +249,7 @@
           <div class="panel section-gap"><h3>Política de dados e privacidade</h3><p>Os ativos, transações e custos lançados em Minha Carteira ficam somente no armazenamento local deste navegador. Não existe sincronização entre dispositivos, login ou conexão com contas da Picnic e do Nubank nesta versão. O site não calcula impostos ou rentabilidade líquida tributária automaticamente. Não coloque senhas, tokens, dados bancários ou documentos pessoais nos lançamentos.</p><p>As cotações podem ser de fechamento, com atraso, ou sujeitas à licença de redistribuição. Cada fonte tem condições de uso próprias. A VEZORI é uma plataforma de pesquisa e educação financeira. Não executa ordens nem recomenda investimentos individualizados.</p></div>
         </section>
       </main>
-      <footer class="footer"><span>VEZORI <b>·</b> v2.3</span><span>Preços e indicadores sujeitos às condições dos provedores.</span><span id="last-sync">Aguardando atualização</span></footer>
+      <footer class="footer"><span>VEZORI <b>·</b> v2.4</span><span>Preços e indicadores sujeitos às condições dos provedores.</span><span id="last-sync">Aguardando atualização</span></footer>
     </div>
   </div>
 </body>

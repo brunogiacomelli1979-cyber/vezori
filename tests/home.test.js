@@ -59,3 +59,25 @@ test('catálogo remoto amplia a cobertura de B3 sem criar cotação faltante',()
  assert.equal(rows.find(r=>r.symbol==='BOVA11').quote,null);
  assert.equal(rows.find(r=>r.symbol==='PETR4').quote.price,22);
 });
+
+test('rankings iniciais consideram apenas variações verificáveis do recorte B3',async()=>{
+ const {rankedMarketMovers}=await import('../public/home.js');
+ const data={quotes:[{symbol:'PETR4',currency:'BRL',price:10,changePct:-3},{symbol:'VALE3',currency:'BRL',price:15,changePct:4},{symbol:'BTC',currency:'BRL',price:250000,changePct:70}],
+  catalog:[{symbol:'BBAS3',market:'BR',currency:'BRL',name:'Banco do Brasil',price:20,changePct:6},{symbol:'AAPL34',market:'BR',currency:'BRL',name:'Apple BDR',price:40,changePct:-5}]};
+ assert.deepEqual(rankedMarketMovers(data,'up',5).map(x=>x.symbol),['BBAS3','VALE3']);
+ assert.deepEqual(rankedMarketMovers(data,'down',5).map(x=>x.symbol),['AAPL34','PETR4']);
+ assert.throws(()=>rankedMarketMovers(data,'x'),/Ranking inválido/);
+});
+test('FIIs, ETFs e BDRs podem ser filtrados sem ticker conhecido',()=>{
+ const data={catalog:[{symbol:'HGLG11',name:'Fundo X',market:'BR',currency:'BRL',category:'fii',price:100},
+  {symbol:'BOVA11',name:'Índice Y',market:'BR',currency:'BRL',category:'etf',price:120},
+  {symbol:'AAPL34',name:'BDR Apple',market:'BR',currency:'BRL',category:'bdr',price:25}]};
+ assert.deepEqual(homeCatalog(data,{market:'FUNDS'}).map(x=>x.symbol),['BOVA11','HGLG11']);
+ assert.deepEqual(homeCatalog(data,{market:'BDR'}).map(x=>x.symbol),['AAPL34']);
+});
+test('home oferece rankings curtos e acesso completo sob demanda',()=>{
+ assert.match(html,/id="home-rankings"/);
+ assert.match(html,/data-home-filter="FUNDS"/);
+ assert.match(html,/data-home-filter="BDR"/);
+ assert.match(css,/market-rank-grid/);
+});
