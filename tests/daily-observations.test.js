@@ -35,3 +35,15 @@ test('desabilitado sem KV e período máximo de 24 meses',async()=>{
  assert.equal((await readDailyObservations(null,{market:'BR',symbol:'PETR4'})).status,'storage_not_configured');
  await assert.rejects(()=>readDailyObservations(kv(),{market:'BR',symbol:'PETR4',months:25}),/Período inválido/);
 });
+
+test('cursor permite solicitar páginas históricas anteriores sem truncamento silencioso',async()=>{
+ const s=kv();
+ await appendDailyObservations(s,market(78),new Date('2025-02-14T02:30:00Z'));
+ await appendDailyObservations(s,market(90),new Date('2026-11-05T02:30:00Z'));
+ const recent=await readDailyObservations(s,{market:'CRYPTO',symbol:'BTC',months:12,asOf:new Date('2026-11-05')});
+ assert.equal(recent.points.length,1);
+ const older=await readDailyObservations(s,{market:'CRYPTO',symbol:'BTC',months:24,asOf:new Date('2025-12-31')});
+ assert.equal(older.points.length,1);
+ assert.equal(older.points[0].date,'2025-02-14');
+ assert.match(recent.previousPageMonth,/^\\d{4}-\\d{2}$/);
+});
