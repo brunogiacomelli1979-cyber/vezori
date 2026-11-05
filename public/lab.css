@@ -85,3 +85,10 @@
 @media(max-width:1090px){.lab-studio-grid{grid-template-columns:1fr}.lab-scenario-fields{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:690px){.lab-builder-intro{flex-direction:column}.lab-disclosure{white-space:normal}.lab-strategy-context{grid-template-columns:1fr}.lab-model-controls{align-items:stretch}.lab-model-controls .lab-field{max-width:none}.lab-panel-head{flex-direction:column}.lab-studio-panel{padding:13px}.lab-scenario-fields{grid-template-columns:1fr 1fr}.lab-scenario-fields label:last-child{grid-column:1/-1}.lab-result-grid>div>strong{font-size:16px}}
 @media(prefers-reduced-motion:reduce){.lab-builder button{transition:none}}
+/* Aviso contextual para rascunhos antigos com taxas nulas */
+.lab-zero-warning{border:1px solid rgba(245,158,11,.42);background:rgba(245,158,11,.08);border-radius:10px;padding:12px 14px;margin:12px 0 14px;color:#f6ddb4}
+.lab-zero-warning[hidden]{display:none!important}
+.lab-zero-warning strong{font-size:12px;color:#ffd18a}
+.lab-zero-warning p{font-size:11px;line-height:1.5;color:#dcbf9c;margin:6px 0 10px}
+.lab-zero-warning button{border:1px solid rgba(245,158,11,.45);border-radius:7px;background:rgba(245,158,11,.13);color:#ffdda8;padding:8px 12px;font-size:11px;font-weight:750;cursor:pointer}
+.lab-zero-warning button:hover,.lab-zero-warning button:focus-visible{background:rgba(245,158,11,.23)}

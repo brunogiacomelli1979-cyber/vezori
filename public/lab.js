@@ -138,6 +138,8 @@ export function createLabBuilder({state}){
   $('lab-weights').className='lab-weight-state '+(okay?'valid':'invalid');
   $('lab-weights-note').textContent=okay?'Pesos válidos para simulação.':'Ajuste os pesos até que somem exatamente 100%, sem posições com 0%.';
   $('lab-run').disabled=!okay;
+  const warning=$('lab-zero-warning');
+  if(warning)warning.hidden=!holdings.length||!holdings.every(r=>r.rate===0);
  }
  function renderHoldings(){
   const rows=holdings.map((row,index)=>{
@@ -255,6 +257,7 @@ export function createLabBuilder({state}){
    holdings=holdings.map(row=>({...row,rate:demoAnnualRate(row.symbol,liveMeta(row.symbol))}));save();renderSuggestions();clearResult();
    $('lab-message').textContent='Taxas de exemplo aplicadas. Valores arbitrários para aprendizagem, não retornos históricos ou esperados.';
   });
+  $('lab-use-illustrative').addEventListener('click',()=>$('lab-demo-rates').click());
   $('lab-zero-rates').addEventListener('click',()=>{
    holdings=holdings.map(row=>({...row,rate:0}));save();renderSuggestions();clearResult();
    $('lab-message').textContent='Todas as taxas agora são 0%. O cálculo mostrará somente o capital aportado, sem rendimento.';

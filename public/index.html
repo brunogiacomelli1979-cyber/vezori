@@ -231,6 +231,7 @@
         <label>Aporte mensal (R$)<input id="lab-monthly" type="number" min="0" max="10000000" step="50" inputmode="decimal" value="300" /></label>
         <label>Horizonte (anos)<input id="lab-years" type="number" min="1" max="40" step="1" value="10" /></label>
       </div>
+      <div id="lab-zero-warning" class="lab-zero-warning" role="note" hidden><strong>Sem rendimento neste cenário</strong><p>As taxas desta composição estão todas em 0% a.a.; o resultado será somente a soma dos aportes.</p><button id="lab-use-illustrative" type="button">Aplicar hipóteses ilustrativas</button></div>
       <button id="lab-run" class="lab-primary" type="button">Calcular cenário hipotético <span aria-hidden="true">→</span></button>
       <p id="lab-error" class="lab-error" role="alert" aria-live="assertive"></p>
       <div id="lab-result-summary" class="lab-result-grid" aria-live="polite"><p>Configure as premissas e clique em <strong>Calcular cenário</strong> para visualizar a projeção.</p></div>

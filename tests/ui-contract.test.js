@@ -70,3 +70,9 @@ test('o Laboratório agrega composição por estratégia sem alterar a home de m
  assert.match(html,/id="view-strategies" class="view"/);
  assert.match(html,/id="sim-form"/);
 });
+
+test('cenário com todas as taxas 0 exibe aviso e opção de hipóteses didáticas',()=>{
+ assert.match(html,/id="lab-zero-warning"/);
+ assert.match(html,/id="lab-use-illustrative"/);
+ assert.match(app,/createLabBuilder/);
+});

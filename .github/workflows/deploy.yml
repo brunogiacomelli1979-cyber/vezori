@@ -65,7 +65,7 @@ jobs:
           if (market.mode !== 'real_market_data' || market.meta?.simulatedPrices !== false) throw new Error('Metadados de mercado invalidos');
           if (!Array.isArray(market.quotes) || !Array.isArray(market.errors)) throw new Error('Contrato de dashboard invalido');
           const validQuotes = market.quotes.filter(q => Number.isFinite(q.price) && q.price > 0 && q.provider);
-          if (!html.includes('id="home-groups"') || !html.includes('/home.css?v=22')) throw new Error('Frontend de mercados nao esta publicado');
+          if (!html.includes('id="home-rankings"') || !/\/home\.css\?v=\d+/.test(html) || !html.includes('id="lab-zero-warning"')) throw new Error('Frontend de mercados e laboratorio nao esta publicado');
           const catalog = await read('/api/catalog?limit=5&page=1');
           if (catalog.mode !== 'real_market_catalog' || !Array.isArray(catalog.items) || !catalog.items.length) throw new Error('Catalogo B3 sem itens da fonte');
           if (catalog.items.some(item => !item.symbol || !item.provider)) throw new Error('Itens B3 sem origem verificavel');
