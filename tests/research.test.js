@@ -38,7 +38,7 @@ test('explorador filtra e mostra ausência de cotação de forma explícita',()=
 test('UI oferece três novas jornadas e preserva cinco telas legadas',()=>{
  const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
- for(const view of ['market','asset','compare','overview','portfolio','strategies','about'])assert.match(html,new RegExp(`id="view-${view}"`));
+ for(const view of ['market','asset','compare','overview','dashboard','strategies','about'])assert.match(html,new RegExp(`id="view-${view}"`));
  for(const id of ['research-explore-body','research-asset-chart','research-compare-table','research-compare-chart','research-explore-open-compare'])assert.ok(html.includes(`id="${id}"`));
  assert.match(app,/createResearchTools/);assert.match(app,/researchTools\?\.onNavigate/);
  assert.doesNotMatch(html,/Carteira demonstrativa|R\$\s*482\.736|R\$\s*443\.037/);
