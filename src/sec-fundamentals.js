@@ -1,7 +1,7 @@
 /** VEZORI / SEC companyfacts — US-GAAP facts with provenance.
  * Only accepted annual 10-K facts; no valuation multiples inferred from incomplete data.
  */
-export const SEC_COMPANIES=Object.freeze({AAPL:{cik:'0000320193',name:'Apple Inc.'}});
+export const SEC_COMPANIES=Object.freeze({AAPL:{cik:'0000320193',name:'Apple Inc.'},MSFT:{cik:'0000789019',name:'Microsoft Corporation'},O:{cik:'0000726728',name:'Realty Income Corporation'},PLD:{cik:'0001045609',name:'Prologis, Inc.'}});
 const annualDays=(a,b)=>{
  const start=Date.parse(a),end=Date.parse(b);
  return Number.isFinite(start)&&Number.isFinite(end)?(end-start)/86400000:null;
