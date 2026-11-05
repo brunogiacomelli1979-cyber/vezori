@@ -89,6 +89,13 @@ jobs:
           const validQuotes = market.quotes.filter(q => Number.isFinite(q.price) && q.price > 0 && q.provider);
           if (!html.includes('id="research-risk-metrics"') || !html.includes('id="lab-risk-study"') || !html.includes('id="lab-basket-result"')) throw new Error('Modulos de risco ausentes no HTML publicado');
           if (!html.includes('id="research-price-zones"') || !html.includes('id="research-crypto-sentiment"')) throw new Error('Paineis de faixas e sentimento ausentes no HTML publicado');
+          if (!html.includes('<option value="max">Máximo disponível</option>')) throw new Error('Controles de historia longa nao publicados');
+          const historicalMax=await fetch(root+'/api/history?market=BR&symbol=PETR4&range=max',{signal:AbortSignal.timeout(25000)});
+          if(historicalMax.ok){
+           const series=await historicalMax.json();
+           if(series.range!=='max'||!Array.isArray(series.points)||series.coverage?.completeSinceListing!==false)throw new Error('Serie longa sem transparencia de cobertura');
+          }else console.log('::warning::Historico max sem cobertura no provedor: HTTP '+historicalMax.status);
+
           const zonesJs=await fetch(root+'/price-zones.js',{signal:AbortSignal.timeout(15000)});
           if(!zonesJs.ok || !(await zonesJs.text()).includes('suggestPriceZones'))throw new Error('Motor de faixas indicativas nao publicado');
           const researchJs=await fetch(root+'/research.js',{signal:AbortSignal.timeout(15000)});
