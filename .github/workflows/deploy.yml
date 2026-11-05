@@ -90,6 +90,13 @@ jobs:
           if (!html.includes('id="research-risk-metrics"') || !html.includes('id="lab-risk-study"') || !html.includes('id="lab-basket-result"')) throw new Error('Modulos de risco ausentes no HTML publicado');
           if (!html.includes('id="research-price-zones"') || !html.includes('id="research-crypto-sentiment"')) throw new Error('Paineis de faixas e sentimento ausentes no HTML publicado');
           if (!html.includes('<option value="max">Máximo disponível</option>')) throw new Error('Controles de historia longa nao publicados');
+          const observationResponse=await fetch(root+'/api/observations?market=BR&symbol=PETR4&months=2',{signal:AbortSignal.timeout(15000)});
+          if(!observationResponse.ok)throw new Error('Endpoint de arquivo diario indisponivel');
+          const observations=await observationResponse.json();
+          if(!['storage_not_configured','no_observations','available'].includes(observations.status))throw new Error('Contrato de arquivo diario invalido');
+          if(observations.status==='available'){
+           if(observations.priceBasis!=='cotação capturada uma vez ao dia, não fechamento oficial'||observations.coverage?.completeSinceListing!==false)throw new Error('Arquivo diario rotulado indevidamente como historico completo');
+          }else console.log('::warning::Arquivo de observacoes ainda nao possui cobertura: '+observations.status);
           const historicalMax=await fetch(root+'/api/history?market=BR&symbol=PETR4&range=max',{signal:AbortSignal.timeout(25000)});
           if(historicalMax.ok){
            const series=await historicalMax.json();
