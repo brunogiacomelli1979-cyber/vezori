@@ -57,6 +57,7 @@ jobs:
         run: |
           node --input-type=module <<'NODE'
           import {analyzeAssetRisk} from './public/risk-analytics.js';
+          import {analyzeHistoricalBasket} from './public/portfolio-risk.js';
           const root = process.env.SITE_URL;
           async function read(path) {
             const response = await fetch(root + path, {signal: AbortSignal.timeout(25000)});
@@ -71,9 +72,11 @@ jobs:
           if (market.mode !== 'real_market_data' || market.meta?.simulatedPrices !== false) throw new Error('Metadados de mercado invalidos');
           if (!Array.isArray(market.quotes) || !Array.isArray(market.errors)) throw new Error('Contrato de dashboard invalido');
           const validQuotes = market.quotes.filter(q => Number.isFinite(q.price) && q.price > 0 && q.provider);
-          if (!html.includes('id="research-risk-metrics"') || !html.includes('id="lab-risk-study"')) throw new Error('Modulos de risco ausentes no HTML publicado');
+          if (!html.includes('id="research-risk-metrics"') || !html.includes('id="lab-risk-study"') || !html.includes('id="lab-basket-result"')) throw new Error('Modulos de risco ausentes no HTML publicado');
           const riskResponse = await fetch(root + '/risk-analytics.js', {signal: AbortSignal.timeout(15000)});
           if (!riskResponse.ok || !(await riskResponse.text()).includes('analyzeAssetRisk')) throw new Error('Modulo quantitativo indisponivel em producao');
+          const basketResponse = await fetch(root + '/portfolio-risk.js', {signal: AbortSignal.timeout(15000)});
+          if (!basketResponse.ok || !(await basketResponse.text()).includes('analyzeHistoricalBasket')) throw new Error('Modulo de cesta historica indisponivel em producao');
           try {
             const historyResponse = await fetch(root + '/api/history?market=BR&symbol=PETR4&range=3mo', {signal: AbortSignal.timeout(16000)});
             if (historyResponse.ok) {
@@ -88,6 +91,20 @@ jobs:
             } else console.log('::warning::Historico de PETR4 nao disponivel no provedor durante o smoke: HTTP ' + historyResponse.status);
           } catch (err) {
             console.log('::warning::Nao foi possivel confirmar historico PETR4 agora: ' + err.message);
+          }
+          try {
+            const pair=await Promise.all(['PETR4','VALE3'].map(async symbol=>{
+              const response=await fetch(root + '/api/history?market=BR&symbol=' + symbol + '&range=3mo', {signal: AbortSignal.timeout(16000)});
+              if (!response.ok) throw new Error(symbol + ' HTTP ' + response.status);
+              const data=await response.json();
+              if (data.symbol !== symbol || data.market !== 'BR') throw new Error('Historico nao corresponde a ' + symbol);
+              return {symbol,weight:50,series:data};
+            }));
+            const basket=analyzeHistoricalBasket(pair);
+            if (!Number.isFinite(basket.returnPct) || !Number.isFinite(basket.volatilityAnnualPct) || basket.observations<31) throw new Error('Cesta real com metrica inconsistente');
+            console.log('CESTA HISTORICA REAL:', pair.map(x=>x.symbol).join('/'), basket.observations, 'datas comuns, volatilidade', basket.volatilityAnnualPct, '% aa');
+          } catch (error) {
+            console.log('::warning::Cesta historica BR nao validada no provedor nesta execucao: ' + error.message);
           }
           if (!html.includes('id="home-rankings"') || !/\/home\.css\?v=\d+/.test(html) || !html.includes('id="lab-zero-warning"')) throw new Error('Frontend de mercados e laboratorio nao esta publicado');
           const catalog = await read('/api/catalog?limit=5&page=1');
