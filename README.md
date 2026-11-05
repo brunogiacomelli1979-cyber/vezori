@@ -49,6 +49,14 @@ A ficha do ativo e o comparador agora aceitam **1 mês, 3 meses, 6 meses, 1 ano,
 - **Atenção B3/COTAHIST:** a página oficial anuncia histórico desde 1986, mas veda coleta automatizada. Não baixar em lote nem redistribuir os arquivos sem autorização. O projeto deverá investigar contratos ou fontes alternativas autorizadas antes de realizar backfill completo.
 - **História completa:** requer identificação da primeira sessão/listagem por ativo, ajustes corporativos, normalização de fusões/mudanças de ticker e séries compradas ou licenciadas quando não há fonte grátis compatível. Um valor `completeSinceListing:true` só poderá ser atribuído após auditoria formal dessa cobertura.
 
+## Etapa seguinte — arquivo incremental de observações (05/11/2026)
+
+O cron da VEZORI grava snapshots globais em KV e agora também mantém registros **por ativo e mês** em `vezori:observations:v1:{market}:{symbol}:{YYYY-MM}`, com moeda, valor, fornecedor, horário original informado pelo fornecedor e horário da captura. Apenas novos dias são anexados, sem sobrescrever observações antigas. Em caso de falha parcial, uma nova execução no mesmo dia usa o **snapshot original**, não uma cotação diferente.
+
+`GET /api/observations?market=BR&symbol=PETR4&months=12` permite consultar até 24 meses por requisição. Sem KV ativo, retorna `storage_not_configured`; se não houver observações, retorna `no_observations`. O valor `completeSinceListing` permanece **false**. A ficha do ativo usa o gráfico de observações apenas **quando a API de histórico falha**, identificando-o como cotação capturada, e não como fechamento oficial. Este fallback **não** fornece dados para análises de volatilidade ou para o motor de compra/venda.
+
+**Importante:** esse mecanismo é acumulativo, não realiza backfill anterior à primeira coleta e não resolve licenças de redistribuição. A habilitação de `MARKET_SNAPSHOTS` no Cloudflare é obrigatória para persistência. O armazenamento mensal usa uma escrita por ativo capturado, além das duas escritas do snapshot global; verificar quotas antes de ampliar a lista de ativos.
+
 ## Configurações externas para cobertura completa
 
 As seguintes configurações **não** devem ser fornecidas em chats nem inseridas no repositório:
