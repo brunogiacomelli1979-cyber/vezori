@@ -55,3 +55,8 @@
 .research-compare-controls .research-mini-status{margin:0}
 @media(max-width:1050px){.research-control-row{grid-template-columns:repeat(2,minmax(0,1fr))}.research-control-row .research-input-label:first-child{grid-column:1/-1}.research-compare-controls{grid-template-columns:repeat(2,minmax(0,1fr))}.research-detail-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:680px){.research-panel{padding:16px}.research-head{flex-direction:column;gap:11px}.research-head-buttons{width:100%;flex-wrap:wrap}.research-head-buttons .research-input-label{flex:1;min-width:150px}.research-control-row,.research-compare-controls,.research-fundamental-grid{grid-template-columns:1fr}.research-control-row .research-input-label:first-child{grid-column:auto}.research-asset-price-line strong{font-size:28px}.research-topline{align-items:flex-start;flex-direction:column}.research-detail-metrics{grid-template-columns:1fr 1fr}}
+/* TradingView Lightweight Charts — optional enhancement, keeping Chart.js fallback. */
+.research-chart .research-lightweight{width:100%;height:100%;min-height:270px}
+.research-chart .research-lightweight[hidden]{display:none!important}
+.research-chart-attribution{font-size:10px;color:#8094a6;line-height:1.5;margin:7px 0 2px}
+.research-chart-attribution a{color:#7bcfaf;text-decoration:underline;text-underline-offset:2px}

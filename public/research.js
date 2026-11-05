@@ -3,6 +3,7 @@
  * Charts reflect provider price closes; not total returns and not normalized across currencies.
  */
 import {ASSETS} from './finance.js';
+import {mountMarketChart} from './market-charts.js';
 
 const $=id=>document.getElementById(id);
 const esc=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -99,10 +100,19 @@ export function createResearchTools({state,navigate,getJson}){
  }
  function setChart(which,labels,datasets,labelMode='value'){
   const canvas=$(which==='detail'?'research-asset-chart':'research-compare-chart');
-  if(!canvas)return;
+  const host=$(which==='detail'?'research-asset-lightweight':'research-compare-lightweight');
+  if(!canvas||!host)return;
   if(which==='detail'&&detailChart){detailChart.destroy();detailChart=null;}
   if(which==='compare'&&comparisonChart){comparisonChart.destroy();comparisonChart=null;}
   const fallback=$(which==='detail'?'research-asset-chart-fallback':'research-compare-chart-fallback');
+  // Preferred: interactive price chart with crosshair and zoom; Chart.js remains as offline fallback.
+  const premium=mountMarketChart(host,labels,datasets,window.LightweightCharts);
+  if(premium){
+   host.hidden=false;canvas.hidden=true;fallback.hidden=true;
+   if(which==='detail')detailChart=premium;else comparisonChart=premium;
+   return;
+  }
+  host.hidden=true;
   if(!window.Chart){canvas.hidden=true;fallback.hidden=false;fallback.textContent='Gráfico indisponível no navegador. Utilize os indicadores numéricos e as fontes abaixo.';return;}
   canvas.hidden=false;fallback.hidden=true;
   const colors=['#10b981','#60a5fa','#f59e0b','#a78bfa','#f472b6'];
@@ -125,6 +135,7 @@ export function createResearchTools({state,navigate,getJson}){
   $('research-asset-history-status').textContent='Consultando série histórica no provedor…';
   $('research-asset-details').innerHTML='';
   const canvas=$('research-asset-chart');canvas.hidden=true;
+  $('research-asset-lightweight').hidden=true;
   if(detailChart){detailChart.destroy();detailChart=null;}
   $('research-asset-chart-fallback').hidden=false;
   $('research-asset-chart-fallback').textContent='Consultando preços de fechamento…';
@@ -164,6 +175,7 @@ export function createResearchTools({state,navigate,getJson}){
   $('research-compare-status').textContent='Consultando séries reais…';
   $('research-compare-foot').textContent='';
   $('research-compare-chart').hidden=true;
+  $('research-compare-lightweight').hidden=true;
   if(comparisonChart){comparisonChart.destroy();comparisonChart=null;}
   $('research-compare-chart-fallback').hidden=false;
   $('research-compare-chart-fallback').textContent='Comparando datas de fechamento em comum…';
