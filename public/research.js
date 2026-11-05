@@ -311,6 +311,20 @@ export function createResearchTools({state,navigate,getJson}){
     $('research-asset-chart-fallback').textContent='Não há série histórica verificável nesta consulta. A ficha mantém os dados que foram efetivamente recebidos.';
     $('research-history-nextstep').textContent='Verifique a fonte, a cobertura do plano e tente novamente mais tarde. Nenhuma série foi interpolada.';
    }
+   // Fallback displays captured quotes ONLY, never disguises them as exchange closes.
+   try{
+    const archive=await getJson('/api/observations?market='+m+'&symbol='+encodeURIComponent(selected)+'&months=24');
+    if(request!==detailRequest)return;
+    if(archive.status==='available'&&archive.points?.length>=2){
+     const points=archive.points.filter(p=>/^\\d{4}-\\d{2}-\\d{2}$/.test(p.date)&&Number.isFinite(p.price)&&p.price>0);
+     if(points.length>=2){
+      $('research-asset-chart').closest('.research-chart').classList.remove('is-missing');
+      setChart('detail',points.map(p=>p.date),[{symbol:selected,values:points.map(p=>p.price)}]);
+      $('research-asset-history-status').textContent='Arquivo diário da VEZORI · '+points.length+' cotações observadas · '+points[0].date+' a '+points.at(-1).date+' · NÃO são fechamentos oficiais nem histórico integral.';
+      $('research-history-nextstep').textContent='Gráfico alternativo: apenas cotações realmente capturadas após habilitar o KV, sem interpolação. Risco e faixas sugeridas ficam indisponíveis sem fechamentos oficiais adequados.';
+     }
+    }
+   }catch(_){/* Preserve original provider error and configuration instructions. */}
   }
  }
  function renderSelected(){
