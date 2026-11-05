@@ -8,7 +8,7 @@ const js=readFileSync(new URL('../public/apex-ui.js',import.meta.url),'utf8');
 const css=readFileSync(new URL('../public/apex.css',import.meta.url),'utf8');
 
 test('Apex design foi integrado na VEZORI sem substituir módulos e APIs',()=>{
- for(const id of ['view-overview','view-market','view-portfolio','view-strategies','view-about','apex-total','apex-allocation-chart','apex-assets-body','apex-trade-form','apex-timeframe','overview-kpis','overview-stocks','overview-strategies','overview-portfolio','overview-sim-chart','overview-sim-metrics','hero-count','hero-time','notice'])assert.ok(html.includes(`id="${id}"`),`Componente ausente: ${id}`);
+ for(const id of ['view-overview','view-market','view-dashboard','view-strategies','view-about','apex-total','apex-allocation-chart','apex-assets-body','apex-trade-form','apex-timeframe','overview-kpis','overview-stocks','overview-strategies','overview-portfolio','overview-sim-chart','overview-sim-metrics','hero-count','hero-time','notice'])assert.ok(html.includes(`id="${id}"`),`Componente ausente: ${id}`);
  assert.match(html,/apex\.css/);
  assert.match(css,/#0b0f19/i);
  assert.match(css,/#10b981/i);
