@@ -131,7 +131,7 @@ export async function usQuote(symbol,key,fetcher=fetch){
  return {symbol,name:String(data.name||symbol).slice(0,90),market:'US',currency:data.currency||'USD',price,changePct:numeric(data.percent_change),provider:'Twelve Data',providerAsOf:data.datetime||null,retrievedAt:now()};
 }
 export async function historyQuote(market,symbol,range,env={},fetcher=fetch){
- if(!['1mo','3mo'].includes(range))throw new Error('Período não permitido');
+ if(!['1mo','3mo','6mo','1y','2y','5y','10y','max'].includes(range))throw new Error('Período não permitido');
  if(market==='BR'){
   if(!/^[A-Z0-9]{4,8}$/.test(symbol))throw new Error('Ticker inválido');
   if(!env.BRAPI_API_KEY&&!BR_SYMBOLS.includes(symbol))throw new Error('Histórico exige chave brapi');
@@ -140,27 +140,39 @@ export async function historyQuote(market,symbol,range,env={},fetcher=fetch){
   if(!Array.isArray(items)||!items.length)throw new Error('Série histórica indisponível no plano atual');
   const points=items.map(p=>({date:typeof p.date==='number'?new Date(p.date*1000).toISOString().slice(0,10):String(p.date||'').slice(0,10),close:numeric(p.adjustedClose??p.close)})).filter(p=>/^\d{4}-\d{2}-\d{2}$/.test(p.date)&&positive(p.close)).sort((a,b)=>a.date.localeCompare(b.date));
   if(!points.length)throw new Error('Série histórica vazia');
-  return {symbol,market,currency:'BRL',points,priceBasis:'fechamento ajustado quando disponível',provider:'brapi',range,interval:'1d'};
+  return {symbol,market,currency:'BRL',points,priceBasis:'fechamento ajustado quando disponível',provider:'brapi',range,interval:'1d',coverage:{requestedRange:range,actualFirst:points[0].date,actualLast:points.at(-1).date,completeSinceListing:false,reason:'Cobertura e janela efetiva dependem do fornecedor e do plano; API pode truncar pedidos longos'}};
  }
  if(market==='US'){
   if(!env.TWELVEDATA_API_KEY)throw new Error('Histórico internacional exige chave Twelve Data');
   if(!/^[A-Z]{1,5}(?:\.[A-Z])?$/.test(symbol))throw new Error('Ticker inválido');
-  const days=range==='1mo'?25:70;
+  const days=({'1mo':25,'3mo':70,'6mo':135,'1y':260,'2y':520,'5y':1300,'10y':2600,max:5000})[range];
   const url=new URL('https://api.twelvedata.com/time_series');
   url.searchParams.set('symbol',symbol);url.searchParams.set('interval','1day');url.searchParams.set('outputsize',String(days));url.searchParams.set('apikey',env.TWELVEDATA_API_KEY);
   const raw=await readJson(url.toString(),{},fetcher);
   const points=(raw.values||[]).map(p=>({date:String(p.datetime||'').slice(0,10),close:numeric(p.close)})).filter(p=>/^\d{4}-\d{2}-\d{2}$/.test(p.date)&&positive(p.close)).sort((a,b)=>a.date.localeCompare(b.date));
   if(!points.length)throw new Error('Série internacional indisponível no plano atual');
-  return {symbol,market,currency:raw.meta?.currency||'USD',points,priceBasis:'fechamento sem ajuste garantido de proventos',provider:'Twelve Data',range,interval:'1d'};
+  return {symbol,market,currency:raw.meta?.currency||'USD',points,priceBasis:'fechamento sem ajuste garantido de proventos',provider:'Twelve Data',range,interval:'1d',coverage:{requestedRange:range,actualFirst:points[0].date,actualLast:points.at(-1).date,completeSinceListing:false,reason:'Exibição pública requer licença; profundidade depende da assinatura e do fornecedor'}};
  }
  if(market==='CRYPTO'){
   if(!env.COINGECKO_API_KEY)throw new Error('Histórico cripto exige chave CoinGecko Demo');
   const id=CRYPTO_BY_SYMBOL[symbol];if(!id)throw new Error('Criptomoeda não cadastrada');
-  const days=range==='1mo'?30:90;
-  const raw=await readJson(`https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=brl&days=${days}&interval=daily`,{'x-cg-demo-api-key':env.COINGECKO_API_KEY},fetcher);
-  const points=(raw.prices||[]).map(p=>({date:new Date(Number(p[0])).toISOString().slice(0,10),close:numeric(p[1])})).filter(p=>positive(p.close)).sort((a,b)=>a.date.localeCompare(b.date));
+  // Demo access: last 365 days only. Never pretend 'max' was fulfilled without a paid plan.
+  if(['2y','5y','10y','max'].includes(range))throw new Error('CoinGecko Demo: histórico acima de 365 dias requer licença/plano compatível');
+  const days=({'1mo':30,'3mo':90,'6mo':180,'1y':365})[range];
+  const raw=await readJson(`https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=brl&days=${days}`,{'x-cg-demo-api-key':env.COINGECKO_API_KEY},fetcher);
+  // CoinGecko Demo sends intraday timestamps for <=90 days: retain last real observation per UTC date.
+  const daily=new Map();
+  for(const row of raw.prices||[]){
+   const time=Number(row?.[0]),price=numeric(row?.[1]);
+   if(!Number.isFinite(time)||!positive(price))continue;
+   const date=new Date(time);
+   if(!Number.isFinite(date.getTime()))continue;
+   const key=date.toISOString().slice(0,10),prev=daily.get(key);
+   if(!prev||time>prev.time)daily.set(key,{time,close:price});
+  }
+  const points=[...daily].sort(([a],[b])=>a.localeCompare(b)).map(([date,item])=>({date,close:item.close}));
   if(!points.length)throw new Error('Histórico cripto indisponível');
-  return {symbol,market,currency:'BRL',points,priceBasis:'preço de mercado diário',provider:'CoinGecko',range,interval:'1d'};
+  return {symbol,market,currency:'BRL',points,priceBasis:'última observação disponível por dia UTC; não equivale necessariamente ao fechamento de bolsa',provider:'CoinGecko',range,interval:'1d',coverage:{requestedRange:range,actualFirst:points[0].date,actualLast:points.at(-1).date,completeSinceListing:false,reason:'Plano Demo: janela móvel máxima de 365 dias; granularidade intradiária agregada por UTC'}};
  }
  throw new Error('Mercado não suportado');
 }
@@ -297,7 +309,7 @@ export default {
   }
   if(path==='/api/history'){
    const market=String(url.searchParams.get('market')||'').toUpperCase(),symbol=String(url.searchParams.get('symbol')||'').toUpperCase(),range=String(url.searchParams.get('range')||'1mo');
-   if(!['BR','US','CRYPTO'].includes(market)||!(/^[A-Z0-9.]{1,8}$/.test(symbol))||!['1mo','3mo'].includes(range))return fail('Parâmetros inválidos',400);
+   if(!['BR','US','CRYPTO'].includes(market)||!(/^[A-Z0-9.]{1,8}$/.test(symbol))||!['1mo','3mo','6mo','1y','2y','5y','10y','max'].includes(range))return fail('Parâmetros inválidos',400);
    const ttl=Math.min(TTL_HISTORY,dailySnapshotCacheSeconds());
    return cacheResult(request,ctx,`/api/history?market=${market}&symbol=${symbol}&range=${range}`,ttl,async()=>{
     try{if(market==='US'&&env.US_PUBLIC_DISPLAY_AUTHORIZED!=='true')throw Error('Exibição pública do histórico americano requer licença');return respond(await historyQuote(market,symbol,range,env),200,ttl);}catch(err){return fail(errorMessage(err),422);}
