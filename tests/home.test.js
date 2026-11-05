@@ -9,7 +9,7 @@ const css=readFileSync(new URL('../public/home.css',import.meta.url),'utf8');
 test('todos os ativos catalogados aparecem sem exigir ticker nem carteira',()=>{
  const rows=homeCatalog({quotes:[]});
  assert.equal(rows.length,13);
- assert.equal(new Set(rows.map(x=>x.symbol)).size,10);
+ assert.equal(new Set(rows.map(x=>x.symbol)).size,13);
  assert.ok(rows.some(x=>x.market==='BR'));
  assert.ok(rows.some(x=>x.market==='US'));
  assert.ok(rows.some(x=>x.market==='CRYPTO'));
