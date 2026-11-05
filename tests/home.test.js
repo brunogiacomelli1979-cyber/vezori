@@ -8,7 +8,7 @@ const css=readFileSync(new URL('../public/home.css',import.meta.url),'utf8');
 
 test('todos os ativos catalogados aparecem sem exigir ticker nem carteira',()=>{
  const rows=homeCatalog({quotes:[]});
- assert.equal(rows.length,10);
+ assert.equal(rows.length,13);
  assert.equal(new Set(rows.map(x=>x.symbol)).size,10);
  assert.ok(rows.some(x=>x.market==='BR'));
  assert.ok(rows.some(x=>x.market==='US'));
@@ -27,7 +27,7 @@ test('busca por nome funciona, e filtros mantêm preços indisponíveis visívei
  const petro=homeCatalog({quotes:[]},{search:'Petrobras'});
  assert.deepEqual(petro.map(x=>x.symbol),['PETR4']);
  const eu=homeCatalog({quotes:[]},{market:'US'});
- assert.deepEqual(eu.map(x=>x.symbol),['AAPL','QQQ','VOO']);
+ assert.deepEqual(eu.map(x=>x.symbol),['AAPL','MSFT','O','PLD','QQQ','VOO']);
  assert.equal(homeCatalog({quotes:[]},{search:'inexistente'}).length,0);
 });
 test('classificação por variação separa valores sem cotação',()=>{
@@ -54,7 +54,7 @@ test('catálogo remoto amplia a cobertura de B3 sem criar cotação faltante',()
  const rows=homeCatalog({quotes:[{symbol:'PETR4',currency:'BRL',price:22,changePct:1}],
  catalog:[{symbol:'HGLG11',name:'Fundo logístico',market:'BR',currency:'BRL',category:'fii',price:151.32,changePct:2,provider:'brapi'},
  {symbol:'BOVA11',name:'ETF Ibovespa',market:'BR',currency:'BRL',category:'etf',price:null,provider:'brapi'}]});
- assert.equal(rows.length,12);
+ assert.equal(rows.length,15);
  assert.equal(rows.find(r=>r.symbol==='HGLG11').quote.price,151.32);
  assert.equal(rows.find(r=>r.symbol==='BOVA11').quote,null);
  assert.equal(rows.find(r=>r.symbol==='PETR4').quote.price,22);
