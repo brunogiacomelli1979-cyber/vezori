@@ -132,5 +132,5 @@ test('cesta histórica aparece no Laboratório sem substituir o simulador nomina
  for(const id of ['lab-basket-message','lab-basket-result','lab-result-summary','lab-result-chart'])
   assert.match(html,new RegExp('id="'+id+'"'));
  assert.match(js,/analyzeHistoricalBasket\(inputs\)/);
- assert.match(html,/cesta histórica/);
+ assert.match(html,/Análise de risco histórico da cesta de ativos/);
 });
