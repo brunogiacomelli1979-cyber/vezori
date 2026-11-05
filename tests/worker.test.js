@@ -178,9 +178,11 @@ test('captura cron grava snapshot uma vez por dia somente com KV configurado',as
  const first=await collectScheduledMarket({MARKET_SNAPSHOTS:store},fakeFetch,day);
  assert.equal(first.status,'stored');
  assert.equal(first.priced,7);
- assert.equal(values.size,2);
+ assert.equal(first.observations.status,'archived');
+ assert.equal(first.observations.stored,7);
+ assert.equal(values.size,9); // dois snapshots + sete arquivos mensais por ativo
  assert.equal((await collectScheduledMarket({MARKET_SNAPSHOTS:store},fakeFetch,day)).status,'already_recorded');
- assert.equal(values.size,2);
+ assert.equal(values.size,9);
  assert.equal((await collectScheduledMarket({},fakeFetch,day)).status,'storage_not_configured');
 });
 
