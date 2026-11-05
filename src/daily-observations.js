@@ -55,8 +55,9 @@ export async function readDailyObservations(store,{market,symbol,months=12,asOf=
  }
  const seen=new Set();
  for(const p of points){if(seen.has(p.date))throw Error('Observação duplicada');seen.add(p.date);}
+ const previous=new Date(Date.UTC(end.getUTCFullYear(),end.getUTCMonth()-months,1)).toISOString().slice(0,7);
  return {status:points.length?'available':'no_observations',market,symbol,currency,
   interval:'daily_capture',priceBasis:'cotação capturada uma vez ao dia, não fechamento oficial',
-  points,coverage:{actualFirst:points[0]?.date||null,actualLast:points.at(-1)?.date||null,
+  points,previousPageMonth:previous,coverage:{actualFirst:points[0]?.date||null,actualLast:points.at(-1)?.date||null,
    observations:points.length,completeSinceListing:false,reason:'Arquivo incremental; não inclui dados anteriores à habilitação do armazenamento nem dias sem cotação válida'}};
 }
