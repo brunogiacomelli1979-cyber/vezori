@@ -2,6 +2,7 @@
 export const ASSETS=Object.freeze({
   PETR4:{currency:'BRL',market:'BR',name:'Petrobras PN'},VALE3:{currency:'BRL',market:'BR',name:'Vale ON'},ITUB4:{currency:'BRL',market:'BR',name:'Itaú PN'},MGLU3:{currency:'BRL',market:'BR',name:'Magazine Luiza'},
   VOO:{currency:'USD',market:'US',name:'Vanguard S&P 500'},QQQ:{currency:'USD',market:'US',name:'Invesco Nasdaq 100'},AAPL:{currency:'USD',market:'US',name:'Apple'},
+  MSFT:{currency:'USD',market:'US',name:'Microsoft'},O:{currency:'USD',market:'US',name:'Realty Income (REIT)'},PLD:{currency:'USD',market:'US',name:'Prologis (REIT)'},
   BTC:{currency:'BRL',market:'CRYPTO',name:'Bitcoin'},ETH:{currency:'BRL',market:'CRYPTO',name:'Ethereum'},SOL:{currency:'BRL',market:'CRYPTO',name:'Solana'}
 });
 export const KEY='vezori-portfolio-v3';
