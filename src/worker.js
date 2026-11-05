@@ -1,4 +1,5 @@
 /** VEZORI Market API | Cloudflare Workers | production-safe upstream validation. */
+import {SEC_COMPANIES,extractSECAnnualFacts} from './sec-fundamentals.js';
 export const BR_SYMBOLS=['PETR4','VALE3','ITUB4','MGLU3'];
 export const US_SYMBOLS=['VOO','QQQ','AAPL'];
 export const CRYPTO_BY_SYMBOL=Object.freeze({BTC:'bitcoin',ETH:'ethereum',SOL:'solana'});
@@ -205,7 +206,24 @@ export default {
   const url=new URL(request.url),path=url.pathname;
   if(!path.startsWith('/api/'))return env.ASSETS?.fetch?env.ASSETS.fetch(request):new Response('VEZORI: inicialize via Cloudflare Wrangler.',{status:404});
   if(request.method!=='GET')return fail('Método não permitido',405);
-  if(path==='/api/health')return respond({service:'VEZORI',status:'ok',timestamp:now(),sourcesConfigured:{brapi:!!env.BRAPI_API_KEY,coingecko:!!env.COINGECKO_API_KEY,twelvedata:!!env.TWELVEDATA_API_KEY,usPublicDisplayAuthorized:env.US_PUBLIC_DISPLAY_AUTHORIZED==='true'}});
+  if(path==='/api/health')return respond({service:'VEZORI',status:'ok',timestamp:now(),sourcesConfigured:{brapi:!!env.BRAPI_API_KEY,coingecko:!!env.COINGECKO_API_KEY,twelvedata:!!env.TWELVEDATA_API_KEY,usPublicDisplayAuthorized:env.US_PUBLIC_DISPLAY_AUTHORIZED==='true',secIdentified:!!env.SEC_USER_AGENT}});
+
+  if(path==='/api/fundamentals'){
+   const market=String(url.searchParams.get('market')||'').toUpperCase();
+   const symbol=String(url.searchParams.get('symbol')||'').toUpperCase();
+   if(market!=='US'||!Object.hasOwn(SEC_COMPANIES,symbol))return fail('Demonstrativos ainda não integrados para este ativo',404);
+   if(!env.SEC_USER_AGENT||!/^[^\r\n]{8,200}$/.test(env.SEC_USER_AGENT)||!env.SEC_USER_AGENT.includes('@')){
+    return respond({status:'not_configured',symbol,source:'SEC EDGAR',message:'Consulta fundamentalista requer identificação de contato da aplicação perante a SEC. Configure SEC_USER_AGENT no Worker.'},200,3600);
+   }
+   const company=SEC_COMPANIES[symbol],ttl=dailySnapshotCacheSeconds();
+   return cacheResult(request,ctx,`/api/fundamentals?market=US&symbol=${symbol}`,ttl,async()=>{
+    try{
+     const source=`https://data.sec.gov/api/xbrl/companyfacts/CIK${company.cik}.json`;
+     const raw=await readJson(source,{'User-Agent':env.SEC_USER_AGENT},fetch);
+     return respond(extractSECAnnualFacts(raw,symbol),200,ttl);
+    }catch(err){return fail(errorMessage(err),503);}
+   });
+  }
 
   if(path==='/api/catalog'){
    const search=url.searchParams.get('search')||'',page=Number(url.searchParams.get('page')||1),limit=Number(url.searchParams.get('limit')||50);

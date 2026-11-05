@@ -19,6 +19,12 @@ function fakeFetch(url,options={}){
   assert.ok(!options.headers['x-cg-demo-api-key']||options.headers['x-cg-demo-api-key']==='demo-secret');
   if(uri.pathname.includes('market_chart'))obj={prices:[[1793450000000,390000],[1793536400000,400000]]};
   else obj={bitcoin:{brl:390000,usd:72000,brl_24h_change:2,last_updated_at:1793800000},ethereum:{brl:18000,usd:3300,brl_24h_change:-1,last_updated_at:1793800000},solana:{brl:990,usd:190,brl_24h_change:0.5,last_updated_at:1793800000}};
+ }else if(uri.hostname==='data.sec.gov'){
+  assert.match(options.headers['User-Agent']||'',/@/);
+  obj={cik:320193,entityName:'Apple Inc.',facts:{'us-gaap':{
+    RevenueFromContractWithCustomerExcludingAssessedTax:{units:{USD:[{val:400,start:'2025-09-28',end:'2026-09-26',filed:'2026-11-03',form:'10-K',fp:'FY',accn:'0000320193-26-000026'}]}},
+    NetIncomeLoss:{units:{USD:[{val:100,start:'2025-09-28',end:'2026-09-26',filed:'2026-11-03',form:'10-K',fp:'FY',accn:'0000320193-26-000026'}]}}
+  }}};
  }else if(uri.hostname==='api.twelvedata.com'){
   assert.equal(uri.searchParams.get('apikey'),'td-secret');
   if(uri.pathname.includes('time_series'))obj={meta:{currency:'USD'},values:[{datetime:'2026-11-03',close:'615.00'},{datetime:'2026-11-04',close:'615.56'}]};
@@ -154,4 +160,13 @@ test('chave pessoal americana sem direito de exposição pública não libera pr
  assert.equal(d.availability.twelvedata,'display_rights_required');
  assert.equal(d.quotes.some(x=>x.market==='US'),false);
  assert.equal(d.meta.simulatedPrices,false);
+});
+
+test('endpoint SEC aplica identificação e não inventa fundamentos quando ausente',async()=>{
+ const url='https://vezori.example/api/fundamentals?market=US&symbol=AAPL';
+ const missing=await worker.fetch(new Request(url),{},{});
+ assert.equal(missing.status,200);
+ assert.equal((await missing.json()).status,'not_configured');
+ const invalid=await worker.fetch(new Request('https://vezori.example/api/fundamentals?market=US&symbol=VOO'),{},{});
+ assert.equal(invalid.status,404);
 });

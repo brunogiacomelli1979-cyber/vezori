@@ -65,7 +65,7 @@ export function createResearchTools({state,navigate,getJson}){
  let search='',market='all',sort='availability',selected='PETR4',period='1mo',comparePeriod='1mo';
  const members=new Set();
  const historyCache=new Map();
- let detailChart=null,comparisonChart=null,detailRequest=0,compareRequest=0;
+ let detailChart=null,comparisonChart=null,detailRequest=0,compareRequest=0,fundamentalRequest=0;
  const catalog=new Map();
  const metaOf=s=>ASSETS[s]||catalog.get(s)?.meta;
  const supported=s=>!!metaOf(s);
@@ -119,6 +119,50 @@ export function createResearchTools({state,navigate,getJson}){
   const chart=new window.Chart(canvas,{type:'line',data:{labels,datasets:datasets.map((s,i)=>({label:s.symbol,data:s.values,borderColor:colors[i],backgroundColor:`${colors[i]}18`,pointRadius:labels.length>35?0:1.5,pointHoverRadius:4,tension:.12,borderWidth:2,fill:datasets.length===1,spanGaps:false}))},options:{responsive:true,maintainAspectRatio:false,animation:false,interaction:{intersect:false,mode:'index'},plugins:{legend:{display:datasets.length>1,labels:{color:'#c4d2e0',boxWidth:12,boxHeight:3}},tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${labelMode==='normalized'?num(ctx.parsed.y,2):currency(ctx.parsed.y,quote(selected)?.currency||metaOf(selected).currency)}`}}},scales:{x:{ticks:{maxTicksLimit:8,color:'#97a9b9'},grid:{display:false}},y:{ticks:{color:'#97a9b9',callback:value=>labelMode==='normalized'?num(value,0):num(value,2)},grid:{color:'rgba(148,163,184,.12)'}}}}});
   if(which==='detail')detailChart=chart;else comparisonChart=chart;
  }
+
+ function secMoney(value){
+  if(typeof value!=='number'||!Number.isFinite(value))return '—';
+  const abs=Math.abs(value),div=abs>=1e12?1e12:abs>=1e9?1e9:abs>=1e6?1e6:1;
+  const suffix=div===1e12?' tri':div===1e9?' bi':div===1e6?' mi':'';
+  return 'US$ '+new Intl.NumberFormat('pt-BR',{maximumFractionDigits:2}).format(value/div)+suffix;
+ }
+ function secMetric(label,record,mode='USD'){
+  const value=record?.value;
+  const displayed=typeof value==='number'&&Number.isFinite(value)?
+    mode==='%'?new Intl.NumberFormat('pt-BR',{maximumFractionDigits:2}).format(value)+'%':secMoney(value):'—';
+  const date=record?.periodEnd||'Período indisponível';
+  const filed=record?.filed?' · publicado '+record.filed:'';
+  return '<div><span>'+esc(label)+'</span><strong>'+esc(displayed)+'</strong><small>'+esc(date+filed)+'</small></div>';
+ }
+ async function renderFundamentals(){
+  const id=++fundamentalRequest;
+  const box=$('research-fundamental-grid'),status=$('research-fundamental-status');
+  if(!box||!status)return;
+  box.innerHTML='';
+  status.textContent='Verificando cobertura fundamentalista do ativo…';
+  if(metaOf(selected)?.market!=='US'||selected!=='AAPL'){
+   status.textContent='Fundamentos contábeis ainda não integrados para esta classe/empresa. Arquivos oficiais CVM e SEC estão sendo preparados; não exibimos múltiplos sem fonte.';
+   return;
+  }
+  try{
+   const d=await getJson('/api/fundamentals?market=US&symbol='+encodeURIComponent(selected));
+   if(id!==fundamentalRequest)return;
+   if(d.status!=='available'){
+    status.textContent=d.message||'Demonstrações anuais não disponíveis na configuração atual.';
+    return;
+   }
+   const m=d.metrics||{};
+   box.innerHTML=secMetric('Receita anual (10-K)',m.revenue)+secMetric('Lucro líquido anual',m.netIncome)+
+    secMetric('Ativos totais',m.assets)+secMetric('Passivos totais',m.liabilities)+
+    secMetric('Margem líquida (anual)',m.netMarginPct,'%')+secMetric('ROE anual (PL médio)',m.roePct,'%');
+   status.textContent='SEC EDGAR · '+d.companyName+' · encerramento '+d.periodEnd+
+    ' · demonstrações US-GAAP. Valores não representam P/L, P/VP nem dividend yield. Fontes e datas constam em cada indicador.';
+  }catch(err){
+   if(id!==fundamentalRequest)return;
+   status.textContent='Fundamentos indisponíveis: '+(err.message||'falha de fornecedor')+'. Nenhum dado foi estimado.';
+  }
+ }
+
  function renderDetailHeader(){
   const q=quote(selected),meta=metaOf(selected);
   $('research-asset-name').textContent=`${selected} · ${meta.name}`;
@@ -251,7 +295,7 @@ export function createResearchTools({state,navigate,getJson}){
  }
  function onNavigate(view){
   if(view==='market')renderExplorer();
-  if(view==='asset')renderDetail();
+  if(view==='asset'){renderDetail();renderFundamentals();}
   if(view==='compare'){renderSelected();renderComparison();}
  }
  function refresh(){renderExplorer();renderDetailHeader();}
