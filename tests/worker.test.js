@@ -261,3 +261,18 @@ test('observações exige parâmetros válidos e não inventa dados sem KV',asyn
  assert.equal(ok.status,200);
  assert.equal((await ok.json()).status,'storage_not_configured');
 });
+
+test('diagnóstico de armazenamento diferencia KV ausente, vazio e ativo',async()=>{
+ const none=await worker.fetch(new Request('https://vezori.example/api/storage-status'),{},{});
+ assert.equal(none.status,200);
+ assert.equal((await none.json()).status,'not_configured');
+ const map=new Map(),store={async get(k){return map.has(k)?JSON.parse(map.get(k)):null;},async put(k,v){map.set(k,v)}};
+ const empty=await worker.fetch(new Request('https://vezori.example/api/storage-status'),{MARKET_SNAPSHOTS:store},{});
+ assert.equal((await empty.json()).status,'configured_empty');
+ await collectScheduledMarket({MARKET_SNAPSHOTS:store},fakeFetch,new Date('2026-11-05T02:30:00Z'));
+ const active=await worker.fetch(new Request('https://vezori.example/api/storage-status'),{MARKET_SNAPSHOTS:store},{});
+ assert.equal(active.status,200);
+ const body=await active.json();
+ assert.equal(body.status,'active');
+ assert.equal(body.latestSnapshot.date,'2026-11-05');
+});
