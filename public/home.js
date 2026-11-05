@@ -152,7 +152,7 @@ export function createMarketHome({state,navigate,selectAsset,getJson,registerCat
   const covered=all.filter(x=>x.quote).length;
   id('home-catalog-total').textContent=`${all.length} no filtro · ${catalog.length} consultados na B3${catalogTotal!=null?' · '+catalogTotal+' no catálogo da fonte':''}`;
   id('home-status').textContent=loading?'Atualizando listagem da B3…':state.data?`${covered} com preço neste filtro`:'Carregando dados reais…';
-  id('home-updated').textContent=notice||(state.data?`Consulta: ${homeWhen(state.data.generatedAt)}`:'Aguardando atualização');
+  id('home-updated').textContent=notice||(state.data?.meta?.isDailySnapshot?`Snapshot: ${homeWhen(state.data.meta.snapshotCapturedAt)} · ${state.data.meta.ageHours}h${state.data.meta.stale?' · atenção: desatualizado':''}`:state.data?`Consulta: ${homeWhen(state.data.generatedAt)}`:'Aguardando atualização');
   id('home-search').value=query;id('home-sort').value=sort;
   id('home-filters').querySelectorAll('[data-home-filter]').forEach(button=>{
    const active=button.dataset.homeFilter===filter;

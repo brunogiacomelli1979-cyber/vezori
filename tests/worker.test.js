@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import worker,{BR_SYMBOLS,buildDashboard,brazilQuote,brazilQuotes,historyQuote,cryptoQuotes,listB3Catalog,dailySnapshotCacheSeconds} from '../src/worker.js';
+import worker,{BR_SYMBOLS,buildDashboard,brazilQuote,brazilQuotes,historyQuote,cryptoQuotes,listB3Catalog,dailySnapshotCacheSeconds,collectScheduledMarket} from '../src/worker.js';
 function fakeFetch(url,options={}){
  const uri=new URL(url);let obj;
  if(uri.hostname==='brapi.dev'){
@@ -169,4 +169,17 @@ test('endpoint SEC aplica identificação e não inventa fundamentos quando ause
  assert.equal((await missing.json()).status,'not_configured');
  const invalid=await worker.fetch(new Request('https://vezori.example/api/fundamentals?market=US&symbol=VOO'),{},{});
  assert.equal(invalid.status,404);
+});
+
+test('captura cron grava snapshot uma vez por dia somente com KV configurado',async()=>{
+ const values=new Map();
+ const store={async get(k){return values.has(k)?JSON.parse(values.get(k)):null;},async put(k,v){values.set(k,v);}};
+ const day=new Date('2026-11-05T02:30:00Z');
+ const first=await collectScheduledMarket({MARKET_SNAPSHOTS:store},fakeFetch,day);
+ assert.equal(first.status,'stored');
+ assert.equal(first.priced,7);
+ assert.equal(values.size,2);
+ assert.equal((await collectScheduledMarket({MARKET_SNAPSHOTS:store},fakeFetch,day)).status,'already_recorded');
+ assert.equal(values.size,2);
+ assert.equal((await collectScheduledMarket({},fakeFetch,day)).status,'storage_not_configured');
 });

@@ -1,5 +1,6 @@
 /** VEZORI Market API | Cloudflare Workers | production-safe upstream validation. */
 import {SEC_COMPANIES,extractSECAnnualFacts} from './sec-fundamentals.js';
+import {persistDailySnapshot,latestDailySnapshot} from './daily-snapshot.js';
 export const BR_SYMBOLS=['PETR4','VALE3','ITUB4','MGLU3'];
 export const US_SYMBOLS=['VOO','QQQ','AAPL'];
 export const CRYPTO_BY_SYMBOL=Object.freeze({BTC:'bitcoin',ETH:'ethereum',SOL:'solana'});
@@ -201,12 +202,17 @@ async function cacheResult(request,ctx,key,ttl,runner){
  return result;
 }
 const fail=(message,status)=>respond({error:message,simulatedPrices:false},status);
+export async function collectScheduledMarket(env={},fetcher=fetch,time=new Date()){
+ if(!env.MARKET_SNAPSHOTS)return {status:'storage_not_configured'};
+ const dashboard=await buildDashboard(env,fetcher);
+ return persistDailySnapshot(env.MARKET_SNAPSHOTS,dashboard,time);
+}
 export default {
  async fetch(request,env={},ctx={}){
   const url=new URL(request.url),path=url.pathname;
   if(!path.startsWith('/api/'))return env.ASSETS?.fetch?env.ASSETS.fetch(request):new Response('VEZORI: inicialize via Cloudflare Wrangler.',{status:404});
   if(request.method!=='GET')return fail('Método não permitido',405);
-  if(path==='/api/health')return respond({service:'VEZORI',status:'ok',timestamp:now(),sourcesConfigured:{brapi:!!env.BRAPI_API_KEY,coingecko:!!env.COINGECKO_API_KEY,twelvedata:!!env.TWELVEDATA_API_KEY,usPublicDisplayAuthorized:env.US_PUBLIC_DISPLAY_AUTHORIZED==='true',secIdentified:!!env.SEC_USER_AGENT}});
+  if(path==='/api/health')return respond({service:'VEZORI',status:'ok',timestamp:now(),sourcesConfigured:{brapi:!!env.BRAPI_API_KEY,coingecko:!!env.COINGECKO_API_KEY,twelvedata:!!env.TWELVEDATA_API_KEY,usPublicDisplayAuthorized:env.US_PUBLIC_DISPLAY_AUTHORIZED==='true',secIdentified:!!env.SEC_USER_AGENT,marketSnapshotStorage:!!env.MARKET_SNAPSHOTS}});
 
   if(path==='/api/fundamentals'){
    const market=String(url.searchParams.get('market')||'').toUpperCase();
@@ -235,11 +241,19 @@ export default {
     catch(err){return fail(errorMessage(err),503);}
    });
   }
-  if(path==='/api/dashboard')return cacheResult(request,ctx,'/api/dashboard?version=5',dailySnapshotCacheSeconds(),async()=>{
-   const data=await buildDashboard(env);
-   data.meta.refreshSeconds=data.errors.length?1800:dailySnapshotCacheSeconds();
-   return respond(data,200,data.meta.refreshSeconds);
-  });
+  if(path==='/api/dashboard'){
+   if(env.MARKET_SNAPSHOTS){
+    try{
+     const snapshot=await latestDailySnapshot(env.MARKET_SNAPSHOTS);
+     if(snapshot)return respond(snapshot,200,900);
+    }catch(err){console.warn('VEZORI snapshot KV: '+errorMessage(err));}
+   }
+   return cacheResult(request,ctx,'/api/dashboard?version=5',dailySnapshotCacheSeconds(),async()=>{
+    const data=await buildDashboard(env);
+    data.meta.refreshSeconds=data.errors.length?1800:dailySnapshotCacheSeconds();
+    return respond(data,200,data.meta.refreshSeconds);
+   });
+  }
   if(path==='/api/quote'){
    const market=String(url.searchParams.get('market')||'').toUpperCase(),symbol=String(url.searchParams.get('symbol')||'').toUpperCase();
    if(!['BR','US','CRYPTO'].includes(market)||!(/^[A-Z0-9.]{1,8}$/.test(symbol)))return fail('Parâmetros inválidos',400);
@@ -263,5 +277,9 @@ export default {
    });
   }
   return fail('Rota não encontrada',404);
+ },
+ async scheduled(controller,env={},ctx={}){
+  const result=await collectScheduledMarket(env,fetch,new Date(controller.scheduledTime||Date.now()));
+  console.log('VEZORI scheduled market capture: '+result.status);
  }
 };

@@ -31,6 +31,11 @@ jobs:
 
       - name: Verificar sintaxe e executar testes
         run: npm run check
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Validar extrator CVM
+        run: python -m unittest discover -s tests -p 'test_cvm_extract.py'
 
       - name: Avisar quando o Cloudflare nao estiver configurado
         if: ${{ env.CF_TOKEN_CONFIGURED != 'true' || env.CF_ACCOUNT_CONFIGURED != 'true' }}

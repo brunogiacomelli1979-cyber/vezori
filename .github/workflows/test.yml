@@ -20,3 +20,8 @@ jobs:
           node --check public/app.js
       - name: Executar testes (sem credenciais)
         run: node --test tests/*.test.js
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Validar extrator CVM
+        run: python -m unittest discover -s tests -p 'test_cvm_extract.py'
