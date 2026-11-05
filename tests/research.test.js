@@ -51,3 +51,15 @@ test('ficha exibe métricas de risco somente após histórico verificável',()=>
  assert.match(research,/analyzeAssetRisk\(series\)/);
  assert.match(html,/pelo menos 30 retornos diários/);
 });
+
+
+test('a ficha brasileira recolhe gráfico vazio, mostra origem e ajuda para ativar histórico',()=>{
+ const h=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const js=readFileSync(new URL('../public/research.js',import.meta.url),'utf8');
+ for(const id of ['research-history-nextstep','research-history-cta','research-history-alternative','research-fundamental-document','research-fundamental-method'])
+  assert.match(h,new RegExp('id="'+id+'"'));
+ assert.match(js,/classList\.add\('is-missing'\)/);
+ assert.match(js,/BRAPI_API_KEY/);
+ assert.match(js,/PETR4 \(ação diferente\)/);
+ assert.match(js,/d\.status!=='verified_accounts'|data\.status!=='verified_accounts'/);
+});
