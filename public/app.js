@@ -103,16 +103,16 @@ function dashboardView(){
 }
 function providerView(){
  const catalog=[
-  ['brapi','Ações brasileiras','PETR4, VALE3, ITUB4, MGLU3 sem chave; outros tickers requerem plano compatível.'],
+  ['brapi','Ações brasileiras — brapi','Quatro tickers gratuitos de teste sem chave; PETR3 e muitos outros históricos precisam de BRAPI_API_KEY configurada no backend.'],
   ['frankfurter','Câmbio de referência','USD/BRL e EUR/BRL, atualizações diárias; não equivale à PTAX e nem ao câmbio de compra.'],
   ['bcb','Banco Central','Meta Selic oficial, série SGS 432; não confundir com CDI efetivo.'],
-  ['coingecko','Criptomoedas — CoinGecko','BTC, ETH e SOL em BRL pela API pública sem chave; chave Demo opcional para limites mais estáveis.'],
+  ['coingecko','Criptomoedas — CoinGecko','BTC, ETH e SOL em BRL; chave Demo no servidor melhora a estabilidade e habilita históricos de mercado.'],
   ['twelvedata','Ações, ETFs e REITs dos EUA','A Twelve Data cobre essas classes; planos individuais/gratuitos não autorizam automaticamente a exibição pública. Os preços exigem licença compatível, além da chave.']
  ];
  const avail=state.data?.availability||{};
  $('provider-grid').innerHTML=catalog.map(([key,title,desc])=>{
-  const status=avail[key]||'unavailable';const label={available:'Consultado',public_no_key:'API pública sem chave',key_required:'Chave necessária',display_rights_required:'Licença de exibição necessária',partial_failure:'Falha parcial',unavailable:'Pendente'}[status];
-  const cls=status==='available'||status==='public_no_key'?'good':(status==='key_required'||status==='display_rights_required')?'waiting':'bad';
+  const status=avail[key]||'unavailable';const label={available:'Consultado',sandbox_only:'Cobertura básica sem chave',public_no_key:'API pública sem chave',key_required:'Chave necessária',display_rights_required:'Licença de exibição necessária',partial_failure:'Falha parcial',unavailable:'Pendente'}[status];
+  const cls=status==='available'||status==='public_no_key'?'good':(status==='sandbox_only'||status==='key_required'||status==='display_rights_required')?'waiting':'bad';
   return `<article class="provider-card"><h3>${esc(title)}</h3><p>${esc(desc)}</p><span class="provider-state ${cls}">${label}</span></article>`;
  }).join('');
 }
