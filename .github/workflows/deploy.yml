@@ -44,6 +44,13 @@ jobs:
         run: |
           echo "::warning::Deploy nao executado. Cadastre CLOUDFLARE_API_TOKEN e CLOUDFLARE_ACCOUNT_ID em Settings > Secrets and variables > Actions e rode este workflow novamente."
 
+      - name: Preparar armazenamento KV da VEZORI sem recursos pagos
+        if: ${{ env.CF_TOKEN_CONFIGURED == 'true' && env.CF_ACCOUNT_CONFIGURED == 'true' }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node scripts/provision_kv.mjs
+
       - name: Publicar VEZORI via Wrangler
         if: ${{ env.CF_TOKEN_CONFIGURED == 'true' && env.CF_ACCOUNT_CONFIGURED == 'true' }}
         uses: cloudflare/wrangler-action@v4
@@ -70,6 +77,7 @@ jobs:
           if (!/VEZORI/i.test(html)) throw new Error('A pagina principal nao contem a marca VEZORI');
           const health = await read('/api/health');
           if (health.service !== 'VEZORI' || health.status !== 'ok') throw new Error('API de saude invalida');
+          console.log('ARMAZENAMENTO PERSISTENTE:',health.sourcesConfigured?.marketSnapshotStorage?'KV vinculado':'KV ainda nao vinculado');
           const cvm=await read('/api/fundamentals?market=BR&symbol=PETR3');
           if(cvm.status!=='verified_accounts'||cvm.symbol!=='PETR3'||!cvm.accounts?.length||!cvm.sourceSha256)throw Error('CVM PETR3 nao publicado');
           console.log('CVM PETR3:',cvm.periodEnd,cvm.accounts.length,'contas oficiais');
