@@ -211,6 +211,10 @@ export function createResearchTools({state,navigate,getJson}){
   renderDetailHeader();
   const request=++detailRequest;
   $('research-asset-history-status').textContent='Consultando série histórica no provedor…';
+  $('research-history-cta').hidden=true;
+  $('research-history-alternative').hidden=true;
+  $('research-history-nextstep').textContent='';
+  $('research-asset-chart').closest('.research-chart').classList.remove('is-missing');
   $('research-asset-details').innerHTML='';
   $('research-risk-metrics').innerHTML='';
   $('research-risk-status').textContent='Aguardando histórico válido para estimar risco de preço…';
@@ -228,6 +232,8 @@ export function createResearchTools({state,navigate,getJson}){
    $('research-asset-history-status').textContent=`${summary.count} observações · ${series.provider} · ${summary.first} a ${summary.last} · ${series.priceBasis}`;
    $('research-asset-details').innerHTML=`<div><span>Retorno de preço no período</span><strong class="${delta(summary.returnPct)}">${percent(summary.returnPct)}</strong></div><div><span>Menor fechamento</span><strong>${currency(summary.min,series.currency)}</strong></div><div><span>Maior fechamento</span><strong>${currency(summary.max,series.currency)}</strong></div><div><span>Último fechamento</span><strong>${currency(summary.lastClose,series.currency)}</strong></div>`;
    setChart('detail',points.map(p=>p.date),[{symbol:selected,values:points.map(p=>p.close)}]);
+   $('research-history-cta').hidden=true;
+   $('research-history-nextstep').textContent='';
    try{
     const risk=analyzeAssetRisk(series);
     const pct=value=>value===null?'—':num(value)+'%';
@@ -246,7 +252,27 @@ export function createResearchTools({state,navigate,getJson}){
    $('research-asset-history-status').textContent=`Histórico indisponível: ${err.message}`;
    $('research-risk-status').textContent='Risco histórico indisponível sem fechamentos verificáveis.';
    $('research-asset-chart-fallback').hidden=false;
-   $('research-asset-chart-fallback').textContent='Sem série verificável para o período. Não produzimos um gráfico artificial.';
+   $('research-asset-chart').closest('.research-chart').classList.add('is-missing');
+   const text=String(err.message||'').toLowerCase(),m=metaOf(selected)?.market;
+   if(m==='BR'&&/(chave brapi|exige chave|http 401|http 403)/.test(text)){
+    $('research-asset-chart-fallback').textContent='Este histórico precisa de uma chave brapi; a cotação exibida acima vem da listagem pública.';
+    $('research-history-nextstep').textContent='A brapi oferece chave gratuita para histórico de até 3 meses. Na VEZORI, a chave deve ficar no segredo BRAPI_API_KEY do Cloudflare, nunca no navegador ou repositório. Confira os termos de exibição pública.';
+    const link=$('research-history-cta');
+    link.href='https://brapi.dev/';link.textContent='Consultar chave gratuita na brapi';link.hidden=false;
+    if(selected==='PETR3'){
+     $('research-history-alternative').hidden=false;
+     $('research-history-alternative').textContent='Ver histórico de PETR4 (ação diferente)';
+    }
+   }else if(m==='US'){
+    $('research-asset-chart-fallback').textContent='Histórico americano indisponível sem fonte habilitada para exibição pública.';
+    $('research-history-nextstep').textContent='A plataforma não redistribui automaticamente cotações de planos pessoais. A contratação deve autorizar exibição pública para ações, ETFs e REITs.';
+    const link=$('research-history-cta');
+    link.href='https://support.twelvedata.com/en/articles/5332349-commercial-and-personal-usage';
+    link.textContent='Consultar regras de licenciamento';link.hidden=false;
+   }else{
+    $('research-asset-chart-fallback').textContent='Não há série histórica verificável nesta consulta. A ficha mantém os dados que foram efetivamente recebidos.';
+    $('research-history-nextstep').textContent='Verifique a fonte, a cobertura do plano e tente novamente mais tarde. Nenhuma série foi interpolada.';
+   }
   }
  }
  function renderSelected(){
@@ -330,6 +356,7 @@ export function createResearchTools({state,navigate,getJson}){
   $('research-asset-period').addEventListener('change',event=>{period=event.target.value;renderDetail();});
   $('research-asset-add-compare').addEventListener('click',()=>{addCompare(selected);navigate('compare');});
   $('research-asset-back').addEventListener('click',()=>navigate('overview'));
+  $('research-history-alternative').addEventListener('click',()=>selectAsset('PETR4'));
   $('research-compare-selection').addEventListener('click',event=>{const chip=event.target.closest('[data-research-remove]');if(chip){members.delete(chip.dataset.researchRemove);renderSelected();}});
   $('research-compare-add').addEventListener('change',event=>{if(event.target.value)addCompare(event.target.value);});
   $('research-compare-period').addEventListener('change',event=>{comparePeriod=event.target.value;});
