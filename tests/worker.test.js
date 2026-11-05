@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import worker,{BR_SYMBOLS,buildDashboard,brazilQuote,brazilQuotes,historyQuote,cryptoQuotes,listB3Catalog} from '../src/worker.js';
+import worker,{BR_SYMBOLS,buildDashboard,brazilQuote,brazilQuotes,historyQuote,cryptoQuotes,listB3Catalog,dailySnapshotCacheSeconds} from '../src/worker.js';
 function fakeFetch(url,options={}){
  const uri=new URL(url);let obj;
  if(uri.hostname==='brapi.dev'){
@@ -35,7 +35,7 @@ test('sem chaves: fontes públicas retornam ações BR, FX e Selic, sem fabricar
  assert.equal(d.availability.coingecko,'public_no_key');assert.equal(d.availability.twelvedata,'key_required');assert.equal(d.meta.simulatedPrices,false);
 });
 test('com chaves: CoinGecko e Twelve Data entram na carteira de mercado sem vazar segredos',async()=>{
- const d=await buildDashboard({COINGECKO_API_KEY:'demo-secret',TWELVEDATA_API_KEY:'td-secret'},fakeFetch);
+ const d=await buildDashboard({COINGECKO_API_KEY:'demo-secret',TWELVEDATA_API_KEY:'td-secret',US_PUBLIC_DISPLAY_AUTHORIZED:'true'},fakeFetch);
  assert.equal(d.quotes.length,10);assert.equal(d.quotes.find(q=>q.symbol==='BTC').price,390000);
  assert.equal(d.quotes.find(q=>q.symbol==='VOO').price,615.56);
  assert.equal(JSON.stringify(d).includes('demo-secret'),false);assert.equal(JSON.stringify(d).includes('td-secret'),false);
@@ -140,4 +140,18 @@ test('catálogo rejeita consultas excessivas e parâmetros malformados',async()=
  await assert.rejects(()=>listB3Catalog({limit:200},fakeFetch),/Paginação/);
  await assert.rejects(()=>listB3Catalog({page:-2},fakeFetch),/Paginação/);
  await assert.rejects(()=>listB3Catalog({search:'url&evil=true'},fakeFetch),/Busca inválida/);
+});
+
+test('cache diário respeita o próximo corte 02:30 UTC e não promete tempo real',()=>{
+ const before=dailySnapshotCacheSeconds(new Date('2026-11-05T01:30:00Z'));
+ const after=dailySnapshotCacheSeconds(new Date('2026-11-05T03:30:00Z'));
+ assert.equal(before,3600);
+ assert.equal(after,23*3600);
+ assert.ok(after>before);
+});
+test('chave pessoal americana sem direito de exposição pública não libera preços no site',async()=>{
+ const d=await buildDashboard({TWELVEDATA_API_KEY:'td-secret'},fakeFetch);
+ assert.equal(d.availability.twelvedata,'display_rights_required');
+ assert.equal(d.quotes.some(x=>x.market==='US'),false);
+ assert.equal(d.meta.simulatedPrices,false);
 });

@@ -37,10 +37,11 @@ function marketView(){
  const available=d.quotes.filter(q=>state.filter==='all'||q.market===state.filter);
  $('market-table').innerHTML=makeRows(available);
  $('overview-stocks').innerHTML=makeRows(d.quotes.filter(q=>q.market==='BR'),true);
- $('market-count').textContent=`${available.length} cotações disponíveis · cache até 5 min`;
+ $('market-count').textContent=`${available.length} cotações disponíveis · snapshot com cache diário; confira a data da fonte`;
  const warnings=[];
  if(d.availability?.coingecko==='partial_failure')warnings.push('CoinGecko público indisponível; uma chave Demo gratuita pode melhorar os limites de acesso.');
- if(d.availability?.twelvedata==='key_required')warnings.push('Twelve Data: registre a chave gratuita no backend para visualizar ações e ETFs dos EUA.');
+ if(d.availability?.twelvedata==='key_required')warnings.push('Mercado americano: integração de cotações não configurada. A chave gratuita da Twelve Data é voltada a uso interno e não autoriza automaticamente exibição pública.');
+ if(d.availability?.twelvedata==='display_rights_required')warnings.push('Twelve Data: chave configurada, mas é necessário confirmar licença de exibição pública antes de disponibilizar os preços.');
  for(const error of d.errors||[])warnings.push(`${error.source}: ${error.message}`);
  $('market-warnings').innerHTML=warnings.map(t=>`<div class="warning">${esc(t)}</div>`).join('');
 }

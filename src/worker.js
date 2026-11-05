@@ -2,7 +2,17 @@
 export const BR_SYMBOLS=['PETR4','VALE3','ITUB4','MGLU3'];
 export const US_SYMBOLS=['VOO','QQQ','AAPL'];
 export const CRYPTO_BY_SYMBOL=Object.freeze({BTC:'bitcoin',ETH:'ethereum',SOL:'solana'});
-const TTL_DASHBOARD=300,TTL_QUOTE=300,TTL_HISTORY=1800;
+/** Cache de snapshots orientado ao fechamento: próxima janela às 02:30 UTC.
+ * Evita polling intradiário; Cache API é por região, não armazenamento global persistente.
+ */
+export function dailySnapshotCacheSeconds(current=new Date()){
+ const t=current instanceof Date?current:new Date(current);
+ if(!Number.isFinite(t.getTime()))throw Error('Data de referência inválida');
+ const cut=Date.UTC(t.getUTCFullYear(),t.getUTCMonth(),t.getUTCDate(),2,30,0);
+ const next=t.getTime()<cut?cut:cut+86400000;
+ return Math.max(300,Math.min(86400,Math.floor((next-t.getTime())/1000)));
+}
+const TTL_HISTORY=86400;
 const headers={
   'content-type':'application/json; charset=utf-8',
   'x-content-type-options':'nosniff',
@@ -153,14 +163,14 @@ export async function historyQuote(market,symbol,range,env={},fetcher=fetch){
  throw new Error('Mercado não suportado');
 }
 export async function buildDashboard(env={},fetcher=fetch){
- const out={mode:'real_market_data',generatedAt:now(),quotes:[],fx:[],macro:[],availability:{brapi:'available',frankfurter:'available',bcb:'available',coingecko:env.COINGECKO_API_KEY?'available':'public_no_key',twelvedata:env.TWELVEDATA_API_KEY?'available':'key_required'},errors:[],meta:{simulatedPrices:false,refreshSeconds:300,reference:'Preços de última cotação; podem ter atraso e não são dados tick-by-tick'}};
+ const out={mode:'real_market_data',generatedAt:now(),quotes:[],fx:[],macro:[],availability:{brapi:'available',frankfurter:'available',bcb:'available',coingecko:env.COINGECKO_API_KEY?'available':'public_no_key',twelvedata:!env.TWELVEDATA_API_KEY?'key_required':env.US_PUBLIC_DISPLAY_AUTHORIZED==='true'?'available':'display_rights_required'},errors:[],meta:{simulatedPrices:false,refreshSeconds:dailySnapshotCacheSeconds(),refreshPolicy:'snapshot diário em cache por região; captura sob demanda, não arquivo EOD garantido',reference:'Últimos preços disponíveis nas fontes, com possíveis atrasos; não é uma cotação em tempo real'}};
  const tasks=[];
  const add=(source,kind,run)=>tasks.push({source,kind,run});
  add('brapi','quotes',()=>brazilQuotes(BR_SYMBOLS,env,fetcher));
  for(const base of ['USD','EUR'])add('frankfurter','fx',()=>currencyRate(base,'BRL',fetcher));
  add('bcb','macro',()=>selic(fetcher));
  add('coingecko','quotes',()=>cryptoQuotes(env.COINGECKO_API_KEY,fetcher));
- if(env.TWELVEDATA_API_KEY)for(const symbol of US_SYMBOLS)add('twelvedata','quotes',()=>usQuote(symbol,env.TWELVEDATA_API_KEY,fetcher));
+ if(env.TWELVEDATA_API_KEY&&env.US_PUBLIC_DISPLAY_AUTHORIZED==='true')for(const symbol of US_SYMBOLS)add('twelvedata','quotes',()=>usQuote(symbol,env.TWELVEDATA_API_KEY,fetcher));
  // Concurrency bounded to stay within Cloudflare's six outbound simultaneous connections.
  for(let i=0;i<tasks.length;i+=4){
   const batch=tasks.slice(i,i+4),results=await Promise.allSettled(batch.map(t=>t.run()));
@@ -195,40 +205,43 @@ export default {
   const url=new URL(request.url),path=url.pathname;
   if(!path.startsWith('/api/'))return env.ASSETS?.fetch?env.ASSETS.fetch(request):new Response('VEZORI: inicialize via Cloudflare Wrangler.',{status:404});
   if(request.method!=='GET')return fail('Método não permitido',405);
-  if(path==='/api/health')return respond({service:'VEZORI',status:'ok',timestamp:now(),sourcesConfigured:{brapi:!!env.BRAPI_API_KEY,coingecko:!!env.COINGECKO_API_KEY,twelvedata:!!env.TWELVEDATA_API_KEY}});
+  if(path==='/api/health')return respond({service:'VEZORI',status:'ok',timestamp:now(),sourcesConfigured:{brapi:!!env.BRAPI_API_KEY,coingecko:!!env.COINGECKO_API_KEY,twelvedata:!!env.TWELVEDATA_API_KEY,usPublicDisplayAuthorized:env.US_PUBLIC_DISPLAY_AUTHORIZED==='true'}});
 
   if(path==='/api/catalog'){
    const search=url.searchParams.get('search')||'',page=Number(url.searchParams.get('page')||1),limit=Number(url.searchParams.get('limit')||50);
    if(search.length>60||!/^[\p{L}\p{N} ._-]*$/u.test(search)||!Number.isInteger(page)||page<1||page>200||!Number.isInteger(limit)||limit<1||limit>60)return fail('Parâmetros de catálogo inválidos',400);
    const key='/api/catalog?page='+page+'&limit='+limit+'&search='+encodeURIComponent(search);
-   return cacheResult(request,ctx,key,900,async()=>{
-    try{return respond(await listB3Catalog({search,page,limit}),200,900);}
+   const ttl=dailySnapshotCacheSeconds();
+   return cacheResult(request,ctx,key,ttl,async()=>{
+    try{return respond(await listB3Catalog({search,page,limit}),200,ttl);}
     catch(err){return fail(errorMessage(err),503);}
    });
   }
-  if(path==='/api/dashboard')return cacheResult(request,ctx,'/api/dashboard?version=4',TTL_DASHBOARD,async()=>{
+  if(path==='/api/dashboard')return cacheResult(request,ctx,'/api/dashboard?version=5',dailySnapshotCacheSeconds(),async()=>{
    const data=await buildDashboard(env);
-   data.meta.refreshSeconds=data.errors.length?60:TTL_DASHBOARD;
+   data.meta.refreshSeconds=data.errors.length?1800:dailySnapshotCacheSeconds();
    return respond(data,200,data.meta.refreshSeconds);
   });
   if(path==='/api/quote'){
    const market=String(url.searchParams.get('market')||'').toUpperCase(),symbol=String(url.searchParams.get('symbol')||'').toUpperCase();
    if(!['BR','US','CRYPTO'].includes(market)||!(/^[A-Z0-9.]{1,8}$/.test(symbol)))return fail('Parâmetros inválidos',400);
-   return cacheResult(request,ctx,`/api/quote?market=${market}&symbol=${symbol}`,TTL_QUOTE,async()=>{
+   const ttl=dailySnapshotCacheSeconds();
+   return cacheResult(request,ctx,`/api/quote?market=${market}&symbol=${symbol}`,ttl,async()=>{
     try{
      let q;
      if(market==='BR')q=await brazilQuote(symbol,env);
-     else if(market==='US')q=await usQuote(symbol,env.TWELVEDATA_API_KEY);
+     else if(market==='US'){if(env.US_PUBLIC_DISPLAY_AUTHORIZED!=='true')throw Error('Exibição pública de dados americanos requer licença específica');q=await usQuote(symbol,env.TWELVEDATA_API_KEY);}
      else {if(!Object.hasOwn(CRYPTO_BY_SYMBOL,symbol))throw new Error('Criptomoeda indisponível');q=(await cryptoQuotes(env.COINGECKO_API_KEY)).find(row=>row.symbol===symbol);}
-     if(!q)throw new Error('Cotação não disponível');return respond({quote:q},200,TTL_QUOTE);
+     if(!q)throw new Error('Cotação não disponível');return respond({quote:q},200,ttl);
     }catch(err){return fail(errorMessage(err),422);}
    });
   }
   if(path==='/api/history'){
    const market=String(url.searchParams.get('market')||'').toUpperCase(),symbol=String(url.searchParams.get('symbol')||'').toUpperCase(),range=String(url.searchParams.get('range')||'1mo');
    if(!['BR','US','CRYPTO'].includes(market)||!(/^[A-Z0-9.]{1,8}$/.test(symbol))||!['1mo','3mo'].includes(range))return fail('Parâmetros inválidos',400);
-   return cacheResult(request,ctx,`/api/history?market=${market}&symbol=${symbol}&range=${range}`,TTL_HISTORY,async()=>{
-    try{return respond(await historyQuote(market,symbol,range,env),200,TTL_HISTORY);}catch(err){return fail(errorMessage(err),422);}
+   const ttl=Math.min(TTL_HISTORY,dailySnapshotCacheSeconds());
+   return cacheResult(request,ctx,`/api/history?market=${market}&symbol=${symbol}&range=${range}`,ttl,async()=>{
+    try{if(market==='US'&&env.US_PUBLIC_DISPLAY_AUTHORIZED!=='true')throw Error('Exibição pública do histórico americano requer licença');return respond(await historyQuote(market,symbol,range,env),200,ttl);}catch(err){return fail(errorMessage(err),422);}
    });
   }
   return fail('Rota não encontrada',404);
