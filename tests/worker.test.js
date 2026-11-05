@@ -234,3 +234,30 @@ test('historico americano respeita limite de cinco mil pontos do fornecedor',asy
  assert.equal(requested,'5000');
  assert.equal(h.coverage.completeSinceListing,false);
 });
+
+test('reexecutar coleta repara observações perdidas sem trocar a cotação original',async()=>{
+ const raw=new Map();let drop=true;
+ const store={
+  async get(k){return raw.has(k)?JSON.parse(raw.get(k)):null;},
+  async put(k,v){
+   if(k.startsWith('vezori:observations:')&&drop){drop=false;throw Error('Falha temporária no KV');}
+   raw.set(k,v);
+  }
+ };
+ const day=new Date('2026-11-05T02:30:00Z');
+ const first=await collectScheduledMarket({MARKET_SNAPSHOTS:store},fakeFetch,day);
+ assert.equal(first.status,'stored');
+ assert.equal(first.observations.status,'archive_failed');
+ assert.equal(raw.has('vezori:market:2026-11-05'),true);
+ const next=await collectScheduledMarket({MARKET_SNAPSHOTS:store},fakeFetch,day);
+ assert.equal(next.status,'already_recorded');
+ assert.equal(next.observations.status,'archived');
+ assert.equal(next.observations.stored,7);
+});
+test('observações exige parâmetros válidos e não inventa dados sem KV',async()=>{
+ const invalid=await worker.fetch(new Request('https://vezori.example/api/observations?market=BR&symbol=PETR4&months=999'),{},{});
+ assert.equal(invalid.status,400);
+ const ok=await worker.fetch(new Request('https://vezori.example/api/observations?market=BR&symbol=PETR4&months=12'),{},{});
+ assert.equal(ok.status,200);
+ assert.equal((await ok.json()).status,'storage_not_configured');
+});
