@@ -204,3 +204,31 @@ test('a integração brapi distingue cobertura gratuita sem chave de plano com c
  const withKey=await buildDashboard({BRAPI_API_KEY:'test-key'},fakeFetch);
  assert.equal(withKey.availability.brapi,'available');
 });
+
+test('consulta historico B3 max preserva a janela efetiva e nao afirma historia completa',async()=>{
+ const h=await historyQuote('BR','PETR4','max',{},fakeFetch);
+ assert.equal(h.range,'max');
+ assert.equal(h.coverage.completeSinceListing,false);
+ assert.equal(h.coverage.actualFirst,h.points[0].date);
+ assert.equal(h.coverage.actualLast,h.points.at(-1).date);
+});
+test('CoinGecko Demo limita max e agrega multiplas cotacoes intradiarias por UTC sem fabricar fechamento',async()=>{
+ await assert.rejects(()=>historyQuote('CRYPTO','BTC','max',{COINGECKO_API_KEY:'demo-secret'},fakeFetch),/365 dias/);
+ const mock=async(url,options)=>{
+  assert.ok(String(url).includes('days=90'));
+  assert.ok(!String(url).includes('interval=daily'));
+  const base=Date.parse('2026-10-30T00:00:00.000Z');
+  return new Response(JSON.stringify({prices:[[base,90],[base+43200000,100],[base+86400000,110]]}),{status:200});
+ };
+ const h=await historyQuote('CRYPTO','BTC','3mo',{COINGECKO_API_KEY:'demo-secret'},mock);
+ assert.equal(h.points.length,2);
+ assert.equal(h.points[0].close,100);
+ assert.equal(h.coverage.completeSinceListing,false);
+});
+test('historico americano respeita limite de cinco mil pontos do fornecedor',async()=>{
+ let requested;
+ const fetcher=async(url)=>{requested=new URL(url).searchParams.get('outputsize');return new Response(JSON.stringify({meta:{currency:'USD'},values:[{datetime:'2026-11-04',close:'12.45'}]}),{status:200})};
+ const h=await historyQuote('US','VOO','max',{TWELVEDATA_API_KEY:'demo'},fetcher);
+ assert.equal(requested,'5000');
+ assert.equal(h.coverage.completeSinceListing,false);
+});
