@@ -212,6 +212,19 @@ export default {
   const url=new URL(request.url),path=url.pathname;
   if(!path.startsWith('/api/'))return env.ASSETS?.fetch?env.ASSETS.fetch(request):new Response('VEZORI: inicialize via Cloudflare Wrangler.',{status:404});
   if(request.method!=='GET')return fail('Método não permitido',405);
+  if(path==='/api/crypto-sentiment'){
+   const ttl=Math.min(3600,dailySnapshotCacheSeconds());
+   return cacheResult(request,ctx,'/api/crypto-sentiment',ttl,async()=>{
+    try{
+     const key=env.COINGECKO_API_KEY;
+     const raw=await readJson('https://api.coingecko.com/api/v3/global',key?{'x-cg-demo-api-key':key}:{});
+     const data=raw.data||{},index=data.fear_and_greed_index;
+     const score=numeric(index?.value);
+     if(score===null||score<0||score>100||!index?.sentiment)throw Error('Índice de sentimento ainda indisponível no provedor');
+     return respond({status:'available',score,sentiment:String(index.sentiment).slice(0,40),provider:'CoinGecko',retrievedAt:now(),scope:'mercado cripto global',historical:false},200,ttl);
+    }catch(err){return fail(errorMessage(err),422);}
+   });
+  }
   if(path==='/api/health')return respond({service:'VEZORI',status:'ok',timestamp:now(),sourcesConfigured:{brapi:!!env.BRAPI_API_KEY,coingecko:!!env.COINGECKO_API_KEY,twelvedata:!!env.TWELVEDATA_API_KEY,usPublicDisplayAuthorized:env.US_PUBLIC_DISPLAY_AUTHORIZED==='true',secIdentified:!!env.SEC_USER_AGENT,marketSnapshotStorage:!!env.MARKET_SNAPSHOTS}});
 
   if(path==='/api/fundamentals'){
