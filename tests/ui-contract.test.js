@@ -7,7 +7,7 @@ const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
 const css=readFileSync(new URL('../public/styles.css',import.meta.url),'utf8');
 
 test('layout da VEZORI preserva os cinco modulos funcionais',()=>{
- for(const key of ['overview','market','portfolio','strategies','about']) {
+ for(const key of ['overview','market','dashboard','strategies','about']) {
   assert.match(html,new RegExp(`id="view-${key}"`));
   assert.match(html,new RegExp(`data-view="${key}"`));
  }
