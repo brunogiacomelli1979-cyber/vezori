@@ -8,7 +8,7 @@
 
 ## SEC: US-GAAP (americano)
 - Parser em `src/sec-fundamentals.js`, API `/api/fundamentals?market=US&symbol=AAPL`.
-- Apenas CIK verificado para AAPL: 0000320193.
+- CIKs registrados e verificados para AAPL, MSFT, Realty Income (O) e Prologis (PLD); o acesso real exige configuração `SEC_USER_AGENT` com contato válido da aplicação.
 - Exige um User-Agent de identificação profissional (contato real) no segredo Cloudflare `SEC_USER_AGENT`.
 - Até que esse segredo seja configurado, responde `not_configured` e o usuário vê uma mensagem — **não** números estimados.
 - Receita e lucro anuais: somente fatos com formulário 10-K e período de 330–380 dias, escolhendo a competência recente; US-GAAP.
@@ -16,16 +16,16 @@
 - Não inferimos P/L, P/VP, DY ou taxa de crescimento de dados incompletos. Cada métrica expõe período, conceito, accession e data de publicação.
 - O código está preparado, mas **não valida a disponibilidade em produção da SEC até que a identificação seja configurada**.
 
-## CVM: DFP e ITR (Brasil)
-- Extrator `scripts/cvm_extract.py` processa ZIPs oficiais da CVM e gera JSON auditável; sem dependências Python externas.
-- Identificador oficial da empresa: CNPJ de 14 dígitos. A relação **ticker ↔ CNPJ não é deduzida automaticamente**; a pessoa que executar deve validá-la.
-- Os documentos são `DFP` (anuais) e `ITR` (trimestrais); escopo `con` consolidado ou `ind` individual.
-- Processa DRE, BPA, BPP e DFC_MI/DFC_MD (quando houver); mantém só `ÚLTIMO` período, seleciona a maior versão por demonstração e competência, rejeita duplicatas conflitantes.
-- Valores monetários informados com escala MIL são convertidos para BRL; escalas desconhecidas preservam valor original e são marcadas sem conversão.
-- Proveniência: URL oficial, SHA-256 do arquivo ZIP, versão contábil, competência, código de conta, escala, CNPJ, data de extração.
-- Por enquanto a saída é **contas brutas validadas**, não ROE/ROIC/P/L automáticos: critérios setoriais e ações em circulação ainda precisam ser conciliados.
-- A ação GitHub `CVM — Extrair demonstrativos oficiais (manual)` permite a extração com CNPJ validado e produz um artifact; **não** incorpora dados não revisados ao site público.
-- A API da CVM publica arquivos revisáveis semanalmente. A ação manual reduz risco de erros em reapresentações.
+## CVM: DFP e ITR (Brasil) — dados oficiais em produção
+
+- Durante o deploy, `scripts/publish_cvm_fundamentals.py` baixa o ZIP DFP 2025 **oficial**, confere os CNPJs de Petrobras, Vale e Itaú Unibanco Holding e gera cinco dossiês em `public/data/fundamentals/`.
+- Tickers publicados: **PETR3, PETR4, VALE3, ITUB3, ITUB4**. Último build validado: **73 contas oficiais**, encerramento em **31/12/2025**.
+- Contrato das fichas: `/api/fundamentals?market=BR&symbol=...`; responde apenas dossiês com ticker, moeda, fonte e SHA-256 de origem consistentes.
+- Cada conta conserva nome CVM, código, demonstração, versão contábil, escala e competência. Nenhuma taxa ou múltiplo de valuation é criado a partir da variação do preço.
+- Ações ON/PN recebem o **mesmo demonstrativo corporativo**, mas são tickers distintos com preços e direitos diferentes. O histórico da PETR4 **não substitui** o da PETR3.
+- O extrator original `scripts/cvm_extract.py` suporta DFP/ITR, dados consolidados e individuais com controle de reapresentações; a publicação automática usa apenas contas consolidadas DFP 2025.
+- O workflow atualiza os dossiês após testes e validação contra a fonte, inclusive em agenda semanal. Se a fonte não estiver disponível, o deploy falha na fase de coleta em vez de publicar balanços fictícios.
+- Indicadores como P/L, dividend yield, ROIC ou dívida líquida/EBITDA dependem de reconciliação setorial, ações em circulação e outras fontes; **não** estão prontos.
 
 ## Próxima etapa — armazenamento e indicadores
 1. Validar mapeamento público CNPJ ↔ ticker para uma primeira empresa da B3 (identificação de classe e múltiplas ações).
