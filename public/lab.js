@@ -89,6 +89,17 @@ export function demoAnnualRate(symbol,metadata=assetMeta(symbol)){
  return 8;
 }
 
+
+export function inspectStudyAssumptions(rows,result=null){
+ const list=Array.isArray(rows)?rows.filter(r=>r&&Number.isFinite(Number(r.rate))&&Number.isFinite(Number(r.weight))):[];
+ const high=list.filter(r=>r.rate>25).map(r=>({symbol:r.symbol,rate:r.rate}));
+ const similar=list.filter(r=>r.weight>=7.5&&Math.abs(r.rate-r.weight)<=.5);
+ const possibleMixup=similar.length>=2&&similar.some(r=>r.rate>=15);
+ const fixedHigh=list.filter(r=>['RF_SIM','BND','SGOV','CAIXA_SIM'].includes(r.symbol)&&r.rate>18);
+ const dominant=result?.holdings?.find(row=>row.finalWeight>65)||null;
+ return {high,possibleMixup,fixedHigh,dominant,requiresConfirmation:high.length>0||possibleMixup||fixedHigh.length>0};
+}
+
 export function createLabBuilder({state}){
  const $=id=>document.getElementById(id);
  let active=0,drafts={},holdings=suggestedPortfolio(0),params={...LAB_DEFAULTS},initialized=false;
@@ -121,6 +132,7 @@ export function createLabBuilder({state}){
   $('lab-result-summary').innerHTML='<p>Configure as premissas e selecione <strong>Calcular cenário</strong> para ver a projeção.</p>';
   $('lab-result-chart').innerHTML='';
   $('lab-result-holdings').innerHTML='';
+  $('lab-result-caution').textContent='';
   $('lab-result-note').textContent='Nenhum resultado calculado. Alterações nos pesos ou nas taxas invalidam o cenário anterior.';
   $('lab-status').textContent='Aguardando cálculo';
  }
@@ -137,7 +149,15 @@ export function createLabBuilder({state}){
   $('lab-weights').textContent=`${fmt(weight)}% / 100%`;
   $('lab-weights').className='lab-weight-state '+(okay?'valid':'invalid');
   $('lab-weights-note').textContent=okay?'Pesos válidos para simulação.':'Ajuste os pesos até que somem exatamente 100%, sem posições com 0%.';
-  $('lab-run').disabled=!okay;
+  const audit=inspectStudyAssumptions(holdings),alerts=[];
+  if(audit.possibleMixup)alerts.push('Algumas taxas de retorno são quase iguais aos pesos da carteira. Confira se não foram copiadas da coluna ao lado.');
+  if(audit.fixedHigh.length)alerts.push('Uma posição de renda fixa foi configurada com mais de 18% a.a. de retorno. Revise essa premissa.');
+  if(audit.high.length)alerts.push('Taxa anual acima de 25%: a capitalização composta pode produzir valores extraordinariamente altos.');
+  $('lab-assumption-alert').textContent=alerts.join(' ');
+  $('lab-assumption-alert').hidden=!audit.requiresConfirmation;
+  $('lab-assumption-confirm').hidden=!audit.requiresConfirmation;
+  if(!audit.requiresConfirmation)$('lab-assumption-ack').checked=false;
+  $('lab-run').disabled=!okay||(audit.requiresConfirmation&&!$('lab-assumption-ack').checked);
   const warning=$('lab-zero-warning');
   if(warning)warning.hidden=!holdings.length||!holdings.every(r=>r.rate===0);
  }
@@ -174,7 +194,7 @@ export function createLabBuilder({state}){
   if(initialized)save();active=index;
   const d=drafts[index];holdings=d?d.holdings.map(r=>({...r})):suggestedPortfolio(index);
   params=d?{...d.params}:{...LAB_DEFAULTS};
-  $('lab-error').textContent='';renderSuggestions();clearResult();initialized=true;
+  $('lab-error').textContent='';$('lab-assumption-ack').checked=false;renderSuggestions();clearResult();initialized=true;
    $('lab-message').textContent=holdings.every(r=>r.rate===0)?
     'Todas as taxas estão em 0% a.a.: este cenário terá apenas o capital aportado. Para testar ganhos e perdas, aplique hipóteses ilustrativas ou edite cada taxa.':note;
   document.querySelectorAll('[data-lab-template]').forEach(button=>button.setAttribute('aria-pressed',String(Number(button.dataset.labTemplate)===active)));
@@ -207,6 +227,9 @@ export function createLabBuilder({state}){
   const guidelines=[0,.25,.5,.75,1].map(f=>`<line x1="${pad.left}" x2="${w-pad.right}" y1="${py(max*f).toFixed(2)}" y2="${py(max*f).toFixed(2)}" stroke="#415066" stroke-opacity=".4"/><text x="${pad.left-10}" y="${(py(max*f)+4).toFixed(2)}" text-anchor="end" fill="#94a3b8" font-size="11">${esc(fmt(max*f/1000,0))}k</text>`).join('');
   $('lab-result-chart').innerHTML=`<svg role="img" aria-label="Evolução matemática de cenário em ${p.years} anos, com total projetado de ${esc(money(result.total))}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="xMidYMid meet">${guidelines}<path d="${lineFor('capital')}" fill="none" stroke="#7a93aa" stroke-width="2" stroke-dasharray="6 5"/><path d="${lineFor('amount')}" fill="none" stroke="#10b981" stroke-width="3"/><text x="${pad.left}" y="${h-7}" fill="#a5b9ca" font-size="11">Ano 0</text><text x="${w-pad.right}" y="${h-7}" text-anchor="end" fill="#a5b9ca" font-size="11">Ano ${p.years}</text></svg><div class="lab-chart-legend"><span><i class="lab-line-green"></i>Valor hipotético</span><span><i class="lab-line-gray"></i>Capital aportado</span></div>`;
   $('lab-result-holdings').innerHTML=result.holdings.map(row=>`<tr><td>${esc(row.symbol)}</td><td>${fmt(row.weight)}%</td><td>${fmt(row.rate)}% a.a.</td><td>${money(row.amount)}</td><td>${fmt(row.finalWeight)}%</td></tr>`).join('');
+  const audit=inspectStudyAssumptions(holdings,result);
+  $('lab-result-caution').textContent=audit.dominant?
+   `Atenção: ${audit.dominant.symbol} representa ${fmt(audit.dominant.finalWeight)}% do resultado matemático final, devido à taxa suposta de ${fmt(audit.dominant.rate)}% ao ano.`:'';
   $('lab-result-note').textContent=`Resultado nominal de ${p.years} anos. Juro mensal equivalente = (1 + taxa anual/100)^(1/12) − 1; aporte aplicado no fim de cada mês. Não há rebalanceamento. Não inclui tributos, custos, proventos, inflação, câmbio ou volatilidade. Taxas são hipóteses, não previsões.`;
   const flat=result.holdings.every(row=>row.rate===0);
   $('lab-status').textContent=flat?'Taxas 0%: sem rendimento':`Cenário ilustrativo · ${result.holdings.length} posições`;
@@ -217,6 +240,7 @@ export function createLabBuilder({state}){
  function calculate(){
   setError('');
   try{
+   if(inspectStudyAssumptions(holdings).requiresConfirmation&&!$('lab-assumption-ack').checked)throw Error('Confirme a premissa de taxa elevada antes de calcular.');
    const r=simulateStudy(holdings,params);renderProjection(r);save();
   }catch(e){setError(e.message);clearResult();}
  }
@@ -229,7 +253,7 @@ export function createLabBuilder({state}){
    selectModel(Number(button.dataset.labTemplate));$('lab-builder').scrollIntoView({behavior:'smooth',block:'start'});
   });
   $('lab-reset').addEventListener('click',()=>{
-   holdings=suggestedPortfolio(active);params={...LAB_DEFAULTS};save();setError('');renderSuggestions();clearResult();
+   holdings=suggestedPortfolio(active);params={...LAB_DEFAULTS};$('lab-assumption-ack').checked=false;save();setError('');renderSuggestions();clearResult();
   });
   $('lab-add').addEventListener('click',()=>add($('lab-add-asset').value));
   $('lab-alternatives').addEventListener('click',e=>{const b=e.target.closest('[data-lab-alt]');if(b)add(b.dataset.labAlt);});
@@ -238,6 +262,7 @@ export function createLabBuilder({state}){
    const index=Number(input.dataset.labIndex),field=input.dataset.labField;
    if(!holdings[index]||!['weight','rate'].includes(field))return;
    holdings[index][field]=input.value===''?NaN:Number(input.value);
+   $('lab-assumption-ack').checked=false;
    setError('');weightStatus();clearResult();
   });
   $('lab-rows').addEventListener('change',()=>{save();renderHoldings();});
@@ -262,6 +287,7 @@ export function createLabBuilder({state}){
    holdings=holdings.map(row=>({...row,rate:0}));save();renderSuggestions();clearResult();
    $('lab-message').textContent='Todas as taxas agora são 0%. O cálculo mostrará somente o capital aportado, sem rendimento.';
   });
+  $('lab-assumption-ack').addEventListener('change',weightStatus);
   $('lab-run').addEventListener('click',calculate);
   selectModel(0);
   // selectModel informa o tipo de cenário ao carregar o modelo.

@@ -217,7 +217,7 @@
     <section class="lab-studio-panel" aria-label="Ativos e pesos da simulação">
       <div class="lab-panel-head"><div><h3>Composição proposta</h3><p>Edite os pesos e as taxas anuais hipotéticas (exemplos didáticos, não previsões).</p></div><span id="lab-weights" class="lab-weight-state valid" aria-live="polite">100% / 100%</span></div>
       <div class="lab-table-scroll"><table class="lab-positions-table"><thead><tr>
-        <th>Ativo / classe</th><th>Peso</th><th>Taxa hipotética a.a.</th><th><span class="lab-sr-only">Retirar</span></th>
+        <th>Ativo / classe</th><th>Alocação na carteira (%)</th><th>Retorno suposto (% a.a.)</th><th><span class="lab-sr-only">Retirar</span></th>
       </tr></thead><tbody id="lab-rows"></tbody></table></div>
       <p class="lab-weight-foot" id="lab-weights-note" role="status">Pesos válidos para simulação.</p>
       <div class="lab-add-tools">
@@ -235,12 +235,15 @@
         <label>Aporte mensal (R$)<input id="lab-monthly" type="number" min="0" max="10000000" step="50" inputmode="decimal" value="300" /></label>
         <label>Horizonte (anos)<input id="lab-years" type="number" min="1" max="40" step="1" value="10" /></label>
       </div>
+      <div id="lab-assumption-alert" class="lab-high-return-alert" role="alert" hidden></div>
+      <label id="lab-assumption-confirm" class="lab-high-return-confirm" hidden><input id="lab-assumption-ack" type="checkbox" /> Conferi os retornos anuais e desejo calcular este cenário extremo.</label>
       <div id="lab-zero-warning" class="lab-zero-warning" role="note" hidden><strong>Sem rendimento neste cenário</strong><p>As taxas desta composição estão todas em 0% a.a.; o resultado será somente a soma dos aportes.</p><button id="lab-use-illustrative" type="button">Aplicar hipóteses ilustrativas</button></div>
       <button id="lab-run" class="lab-primary" type="button">Calcular cenário hipotético <span aria-hidden="true">→</span></button>
       <p id="lab-error" class="lab-error" role="alert" aria-live="assertive"></p>
       <div id="lab-result-summary" class="lab-result-grid" aria-live="polite"><p>Configure as premissas e clique em <strong>Calcular cenário</strong> para visualizar a projeção.</p></div>
       <div id="lab-result-chart" class="lab-result-chart" aria-label="Gráfico da projeção hipotética"></div>
       <div class="lab-result-table-wrap"><table class="lab-results-table"><thead><tr><th>Ativo</th><th>Peso inicial</th><th>Taxa a.a.</th><th>Valor hipotético</th><th>Peso final</th></tr></thead><tbody id="lab-result-holdings"></tbody></table></div>
+      <p id="lab-result-caution" class="lab-result-caution" role="status"></p>
       <p class="lab-result-note" id="lab-result-note">Nenhum resultado calculado. Alterações nos pesos ou nas taxas invalidam o cenário anterior.</p>
     </section>
   </div>

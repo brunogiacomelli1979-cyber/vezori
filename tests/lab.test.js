@@ -102,3 +102,16 @@ test('carteira nova oferece taxas explicitamente ilustrativas com variação pos
  const result=simulateStudy(sample,{initial:10000,monthly:300,years:10});
  assert.ok(result.total>result.invested);
 });
+
+test('captura do usuário: taxa anual confundida com peso aciona alerta de concentração',async()=>{
+ const {inspectStudyAssumptions}=await import('../public/lab.js');
+ const rows=[{symbol:'VOO',weight:20,rate:20},{symbol:'BOVA11',weight:10,rate:10},{symbol:'RF_SIM',weight:55,rate:55.5},{symbol:'OURO_SIM',weight:7.5,rate:7.5},{symbol:'COM_SIM',weight:7.5,rate:7.5}];
+ const result=simulateStudy(rows,{initial:10000,monthly:300,years:10});
+ assert.ok(Math.abs(result.total-866502.6819665792)<.01);
+ const flags=inspectStudyAssumptions(rows,result);
+ assert.equal(flags.possibleMixup,true);
+ assert.equal(flags.requiresConfirmation,true);
+ assert.equal(flags.dominant.symbol,'RF_SIM');
+ assert.ok(flags.dominant.finalWeight>93);
+ assert.equal(inspectStudyAssumptions(suggestedPortfolio(2)).requiresConfirmation,false);
+});
