@@ -183,3 +183,16 @@ test('captura cron grava snapshot uma vez por dia somente com KV configurado',as
  assert.equal(values.size,2);
  assert.equal((await collectScheduledMarket({},fakeFetch,day)).status,'storage_not_configured');
 });
+
+
+test('dossiê CVM brasileiro preserva ticker e hash de origem',async()=>{
+ const url='https://vezori.example/api/fundamentals?market=BR&symbol=PETR3';
+ const d={status:'verified_accounts',symbol:'PETR3',currency:'BRL',sourceUrl:'https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/dfp_cia_aberta_2025.zip',
+ sourceSha256:'a'.repeat(64),accounts:[{statement:'DRE',accountCode:'3.01',label:'Receita',valueBRL:100000,periodEnd:'2025-12-31'}]};
+ const env={ASSETS:{async fetch(request){assert.match(request.url,/PETR3\.json$/);return new Response(JSON.stringify(d),{status:200});}}};
+ const response=await worker.fetch(new Request(url),env,{});
+ assert.equal(response.status,200);assert.equal((await response.json()).symbol,'PETR3');
+ assert.equal((await (await worker.fetch(new Request(url),{},{})).json()).status,'not_published');
+ const bad=await worker.fetch(new Request(url),{ASSETS:{async fetch(){return new Response(JSON.stringify({...d,symbol:'ITUB4'}));}}},{});
+ assert.equal(bad.status,503);
+});
