@@ -217,6 +217,20 @@ export default {
   if(path==='/api/fundamentals'){
    const market=String(url.searchParams.get('market')||'').toUpperCase();
    const symbol=String(url.searchParams.get('symbol')||'').toUpperCase();
+
+   if(market==='BR'){
+    if(!/^[A-Z0-9]{4,8}$/.test(symbol))return fail('Ticker brasileiro inválido',400);
+    if(!env.ASSETS?.fetch)return respond({status:'not_published',symbol,source:'CVM',message:'Dossiê oficial ainda não publicado.'},200);
+    const asset=await env.ASSETS.fetch(new Request(new URL('/data/fundamentals/'+symbol+'.json',request.url)));
+    if(!asset.ok)return respond({status:'not_published',symbol,source:'CVM',message:'Demonstrações oficiais ainda não publicadas para este ticker.'},200,3600);
+    try{
+     const d=await asset.json();
+     if(d?.status!=='verified_accounts'||d.symbol!==symbol||d.currency!=='BRL'||
+        !Array.isArray(d.accounts)||!d.accounts.length||!/^https:\/\/dados\.cvm\.gov\.br\//.test(d.sourceUrl||'')||
+        !/^[a-f0-9]{64}$/.test(d.sourceSha256||''))throw Error('Documento CVM inválido');
+     return respond(d,200,dailySnapshotCacheSeconds());
+    }catch(err){return fail('Dossiê CVM com contrato inválido',503);}
+   }
    if(market!=='US'||!Object.hasOwn(SEC_COMPANIES,symbol))return fail('Demonstrativos ainda não integrados para este ativo',404);
    if(!env.SEC_USER_AGENT||!/^[^\r\n]{8,200}$/.test(env.SEC_USER_AGENT)||!env.SEC_USER_AGENT.includes('@')){
     return respond({status:'not_configured',symbol,source:'SEC EDGAR',message:'Consulta fundamentalista requer identificação de contato da aplicação perante a SEC. Configure SEC_USER_AGENT no Worker.'},200,3600);
