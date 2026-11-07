@@ -6,7 +6,7 @@ import {join} from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {provisionKV,KV_TITLE} from '../scripts/provision_kv.mjs';
 const id='0123456789abcdef0123456789abcdef';
-const env={CLOUDFLARE_API_TOKEN:'test-only-token',CLOUDFLARE_ACCOUNT_ID:'test-only-account'};
+const env={CLOUDFLARE_API_TOKEN:'test-only-token',CLOUDFLARE_ACCOUNT_ID:'a'.repeat(32)};
 const config={name:'vezori',main:'src/worker.js'};
 function fixture(){const dir=mkdtempSync(join(tmpdir(),'vezori-kv-'));const file=join(dir,'wrangler.jsonc');writeFileSync(file,JSON.stringify(config));return {file,close:()=>rmSync(dir,{recursive:true,force:true})};}
 const response=(result,extra={})=>new Response(JSON.stringify({success:true,result,...extra}));

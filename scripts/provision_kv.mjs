@@ -41,6 +41,7 @@ export function applyKVBinding(config,id){
 /** REST avoids parsing human-oriented Wrangler output and enumerates every page. */
 export async function provisionKV({fetcher=fetch,configPath='wrangler.jsonc',env=process.env}={}){
  if(!env.CLOUDFLARE_API_TOKEN||!env.CLOUDFLARE_ACCOUNT_ID)return {status:'no_cloudflare_auth'};
+ if(!/^[a-f0-9]{32}$/i.test(env.CLOUDFLARE_ACCOUNT_ID))throw Error('invalid_account_id_format: configure the 32-hex Cloudflare Account ID in the existing Actions secret');
  const config=JSON.parse(readFileSync(configPath,'utf8'));
  if(config.name!=='vezori'||config.main!=='src/worker.js')throw Error('This provisioning is restricted to the VEZORI Worker');
  const bindings=(config.kv_namespaces||[]).filter(x=>x.binding===KV_BINDING);
