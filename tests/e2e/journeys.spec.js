@@ -13,6 +13,9 @@ test.beforeEach(async({page})=>{
 test('navegação, ausência de overflow, teclado e acessibilidade',async({page},info)=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto('/');
+ const search=await page.locator('#home-search').boundingBox(),field=await page.locator('.home-search-field').boundingBox();
+ expect(search.y).toBeGreaterThanOrEqual(field.y);
+ expect(search.y+search.height).toBeLessThanOrEqual(field.y+field.height+1);
  for(const view of ['overview','market','compare','dashboard','strategies','about']){
   await page.locator('#menu [data-view="'+view+'"]').click();
   await expect(page.locator('#view-'+view)).toBeVisible();

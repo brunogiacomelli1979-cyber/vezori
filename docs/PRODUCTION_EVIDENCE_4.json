@@ -1,0 +1,46 @@
+{
+  "root": "https://vezori.bruno-giacomelli1979.workers.dev",
+  "at": "2026-11-07T20:35:57.513Z",
+  "results": [
+    {
+      "width": 1920,
+      "height": 1080,
+      "views": 6,
+      "axeViolations": 0,
+      "pageErrors": [],
+      "cspErrors": [],
+      "localPortfolio": "write/reload verified in disposable context",
+      "lab": "cost/inflation/tax calculation rendered"
+    },
+    {
+      "width": 1366,
+      "height": 768,
+      "views": 6,
+      "axeViolations": 0,
+      "pageErrors": [],
+      "cspErrors": [],
+      "localPortfolio": "write/reload verified in disposable context",
+      "lab": "cost/inflation/tax calculation rendered"
+    },
+    {
+      "width": 768,
+      "height": 1024,
+      "views": 6,
+      "axeViolations": 0,
+      "pageErrors": [],
+      "cspErrors": [],
+      "localPortfolio": "write/reload verified in disposable context",
+      "lab": "cost/inflation/tax calculation rendered"
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "views": 6,
+      "axeViolations": 0,
+      "pageErrors": [],
+      "cspErrors": [],
+      "localPortfolio": "write/reload verified in disposable context",
+      "lab": "cost/inflation/tax calculation rendered"
+    }
+  ]
+}

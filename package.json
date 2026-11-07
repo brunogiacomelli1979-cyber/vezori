@@ -11,7 +11,8 @@
     "check": "node scripts/check-syntax.mjs && npm test",
     "build": "node scripts/prepare-assets.mjs",
     "predev": "npm run build",
-    "test:ui": "playwright test"
+    "test:ui": "playwright test",
+    "test:production": "node tests/production/api.mjs && node tests/production/browser.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",

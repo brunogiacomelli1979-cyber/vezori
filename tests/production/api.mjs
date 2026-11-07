@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {mkdir,writeFile} from 'node:fs/promises';
+const root='https://vezori.bruno-giacomelli1979.workers.dev';
+const paths=['/api/health','/api/storage-status?acceptance='+Date.now(),'/api/dashboard','/api/fundamentals?market=BR&symbol=PETR3','/api/assets','/api/history?market=BR&symbol=PETR4&range=max','/api/observations?market=CRYPTO&symbol=BTC&months=2'];
+const data=await Promise.all(paths.map(async path=>{const r=await fetch(root+path,{signal:AbortSignal.timeout(30000)});return {path,status:r.status,body:await r.json()};}));
+const expected=process.env.EXPECTED_SHA||process.argv[2];
+assert(expected,'EXPECTED_SHA is required');
+assert.equal(data[0].body.version,'4.0.0');assert.equal(data[0].body.release,expected);
+assert.equal(data[1].body.status,'active');assert(data[1].body.latestSnapshot.macroObservations>0);assert.equal(data[1].body.latestSnapshot.integrity,'SHA-256');
+assert.equal(data[2].body.meta.simulatedPrices,false);assert(data[2].body.quotes.length>0);
+assert.equal(data[3].body.status,'verified_accounts');assert(data[3].body.sourceSha256);
+assert.equal(data[5].status,422);assert.equal(data[6].body.status,'no_observations');
+const out=process.env.EVIDENCE_DIR||'out/production';await mkdir(out,{recursive:true});
+await writeFile(out+'/api.json',JSON.stringify({at:new Date().toISOString(),root,results:data},null,2));
+console.log(JSON.stringify(data.map(x=>({path:x.path,status:x.status,release:x.body.release,storage:x.body.status,quotes:x.body.quotes?.length,macro:x.body.macro?.length,fx:x.body.fx?.length,latestSnapshot:x.body.latestSnapshot})),null,2));
