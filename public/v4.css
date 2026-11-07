@@ -100,3 +100,14 @@ body .home-search-field{position:relative;flex-direction:row;margin:0}
 body .research-chart [hidden]{display:none!important}
 body #local-eod-rights{width:18px;min-height:18px;align-self:flex-start}
 body #local-eod-status,body #engine-record-note,body #engine-license,body #engine-blocked{overflow-wrap:anywhere}
+
+/* Show verified official data on the opening screen without conflating accounting with prices. */
+body .home-engine-spotlight{padding:18px 20px;margin:18px 0 22px;border:1px solid var(--v4-stroke)}
+body .home-engine-head{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+body .home-engine-head h2{font-size:18px;line-height:1.35;margin:4px 0 6px;color:var(--v4-ink)}
+body .home-engine-head p{font-size:12px;line-height:1.6;color:var(--v4-muted);max-width:68ch;margin:0}
+body .home-engine-coverage{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin:12px 0}
+body .home-engine-stat{border:1px solid var(--v4-stroke);border-radius:7px;background:#151f2d;padding:12px;min-height:68px}
+body .home-engine-stat strong{display:block;font-size:20px;color:var(--v4-ink);font-variant-numeric:tabular-nums}
+body .home-engine-stat span{display:block;font-size:11px;line-height:1.5;color:var(--v4-muted)}
+@media(max-width:600px){body .home-engine-head .button{width:100%;justify-content:center}body .home-engine-coverage{grid-template-columns:repeat(2,minmax(0,1fr))}}

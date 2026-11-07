@@ -16,6 +16,26 @@ const definitions={
 };
 export function mountDataEngine(){
  if(!$('engine-query'))return;
+ const homeStatus=$('home-engine-status'),homeCoverage=$('home-engine-coverage');
+ const count=n=>typeof n==='number'&&Number.isFinite(n)?new Intl.NumberFormat('pt-BR').format(n):'—';
+ async function loadHomeCoverage(){
+  if(!homeStatus||!homeCoverage)return;
+  try{
+   const data=await get('/api/data-engine/status');
+   if(data.status!=='available'||!data.storage)throw Error('Acervo oficial ainda não disponível.');
+   homeStatus.textContent=count(data.storage.instruments)+' instrumentos identificados · '+count(data.storage.observations)+' registros publicados · lote '+(data.generatedAt||'sem data informada')+'.';
+   const sources=[['cvm','Companhias CVM'],['fii','FIIs'],['funds','Fundos (piloto)'],['treasury','Títulos do Tesouro'],['macro','Séries macro']];
+   homeCoverage.innerHTML=sources.map(([key,label])=>'<div class="home-engine-stat"><strong>'+count(data.coverage?.[key]?.instruments)+'</strong><span>'+esc(label)+'</span></div>').join('');
+  }catch(error){
+   homeStatus.textContent='Não foi possível confirmar a base oficial: '+error.message;
+   homeCoverage.replaceChildren();
+  }
+ }
+ void loadHomeCoverage();
+ $('home-engine-open')?.addEventListener('click',()=>{
+  $('engine-query')?.scrollIntoView({block:'start'});
+  $('engine-search')?.focus({preventScroll:true});
+ });
  let offset=0,current=null,catalogDataset='cvm',querySerial=0,detailSerial=0;
  function renderDocument(){
   if(!current)return;const fields=definitions[current.dataset]||[],year=$('engine-year').value,scope=$('engine-scope').value;
