@@ -77,7 +77,7 @@ test('CLI --required termina com erro quando não há credenciais',()=>{
   env:{...process.env,CLOUDFLARE_API_TOKEN:'',CLOUDFLARE_ACCOUNT_ID:''},encoding:'utf8'
  });
  assert.equal(child.status,1);
- assert.match(child.stderr,/Deploy blocked/);
+ assert.match(child.stderr,/deploy blocked/i);
 });
 
 test('cria namespace quando não existe e usa o id retornado pelo Cloudflare',()=>{
