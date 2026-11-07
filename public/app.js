@@ -116,6 +116,30 @@ function providerView(){
   return `<article class="provider-card"><h3>${esc(title)}</h3><p>${esc(desc)}</p><span class="provider-state ${cls}">${label}</span></article>`;
  }).join('');
 }
+async function storageView(){
+ const element=$('storage-diagnostic-status');if(!element)return;
+ element.textContent='Consultando o armazenamento histórico…';
+ try{
+  const info=await getJson('/api/storage-status');
+  if(info.status==='not_configured'){
+   element.textContent='Não configurado: binding MARKET_SNAPSHOTS ausente. Sem arquivo histórico persistente.';
+  }else if(info.status==='configured_empty'){
+   element.textContent='KV vinculado, mas ainda não há snapshot válido. Verifique a próxima coleta agendada.';
+  }else if(info.status==='active'){
+   const last=info.latestSnapshot||{},archive=info.archiveSample||{};
+   const sample=archive.status==='available'?
+    archive.observations+' observações de '+archive.asset+' (última '+archive.latestDate+')':
+    'amostra '+(archive.asset||'não informada')+' sem observações confirmadas';
+   element.textContent='KV ativo · último snapshot '+(last.date||'sem data')+
+    ' · '+Number(last.pricedQuotes||0)+' cotações armazenadas · '+sample+
+    '. Não representa histórico integral.';
+  }else{
+   element.textContent='Estado do armazenamento não confirmado ('+String(info.status||'desconhecido').slice(0,40)+').';
+  }
+ }catch(error){
+  element.textContent='Não foi possível confirmar o armazenamento: '+String(error.message||'falha de conexão').slice(0,110);
+ }
+}
 function portfolioView(){
  const p=portfolio(state.transactions,state.data?.quotes||[],state.data?.fx||[]);
  $('portfolio-cost').textContent=money(p.costBRL);
@@ -162,6 +186,7 @@ function navigate(view){
  researchTools?.onNavigate(view);
  if(view==='dashboard')apexUI?.render();
  if(view==='strategies')labBuilder?.refreshQuotes();
+ if(view==='about')storageView();
  if(focusOperations)document.getElementById('portfolio-operations')?.scrollIntoView({behavior:'smooth',block:'start'});
  else window.scrollTo({top:0,behavior:'instant'});
 }
