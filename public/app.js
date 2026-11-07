@@ -1,3 +1,4 @@
+import {createPortfolioStorage} from './portfolio-storage.js';
 import {ASSETS,KEY,STRATEGIES,validateTransaction,book,portfolio,portfolioXirr,project,parseBackup} from './finance.js';
 import {createApexDashboard} from './apex-ui.js';
 import {createResearchTools} from './research.js';
@@ -16,12 +17,12 @@ let apexUI=null;
 let researchTools=null;
 let marketHome=null;
 let labBuilder=null;
-const save=()=>localStorage.setItem(KEY,JSON.stringify({version:3,brand:'VEZORI',savedAt:new Date().toISOString(),transactions:state.transactions}));
+const storage=createPortfolioStorage({getItem:key=>localStorage.getItem(key),setItem:(key,value)=>localStorage.setItem(key,value)});
+let storageWarning='';
+const save=(next=state.transactions,options={})=>{storage.save(next,options);state.transactions=next;storageWarning='';};
 function restore(){
- try{
-  const text=localStorage.getItem(KEY)||localStorage.getItem('investimentos-local-v2');
-  return text?parseBackup(text):[];
- }catch(e){$('portfolio-msg').textContent='Não foi possível validar o histórico local; importe um backup confiável.';return [];}
+ try{return storage.load();}
+ catch(e){storageWarning=e.message;return [];}
 }
 function quoteText(q){return money(q.price,q.currency);}
 function makeRows(quotes,short=false){
@@ -103,7 +104,7 @@ function dashboardView(){
 }
 function providerView(){
  const catalog=[
-  ['brapi','Ações brasileiras — brapi','Quatro tickers gratuitos de teste sem chave; PETR3 e muitos outros históricos precisam de BRAPI_API_KEY configurada no backend.'],
+  ['brapi','Ações brasileiras — brapi','A integração técnica está preservada. A exibição pública depende de autorização documentada do fornecedor, além dos limites da chave e do plano.'],
   ['frankfurter','Câmbio de referência','USD/BRL e EUR/BRL, atualizações diárias; não equivale à PTAX e nem ao câmbio de compra.'],
   ['bcb','Banco Central','Meta Selic oficial, série SGS 432; não confundir com CDI efetivo.'],
   ['coingecko','Criptomoedas — CoinGecko','BTC, ETH e SOL em BRL; chave Demo no servidor melhora a estabilidade e habilita históricos de mercado.'],
@@ -150,7 +151,7 @@ function portfolioView(){
  const annual=portfolioXirr(state.transactions,p);
  $('portfolio-xirr').textContent=annual==null?'—':pct(annual*100);
  $('portfolio-coverage').textContent=p.total?`${p.coverage} de ${p.total} posições com preço real`:'Nenhuma posição cadastrada';
- $('portfolio-msg').textContent=p.complete?'Custo histórico de operações convertido pela taxa informada em cada transação. Preços de mercado vêm das fontes acima.':'Cobertura incompleta: não apresentamos o valor total ou a rentabilidade como se todas as posições estivessem precificadas.';
+ $('portfolio-msg').textContent=storageWarning|| (p.complete?'Custo histórico de operações convertido pela taxa informada em cada transação. Preços de mercado vêm das fontes acima.':'Cobertura incompleta: não apresentamos o valor total ou a rentabilidade como se todas as posições estivessem precificadas.');
  $('portfolio-table').innerHTML=p.rows.length?p.rows.map(r=>`<tr><td><strong class="asset-main">${esc(r.symbol)}</strong><span class="asset-sub">${esc(ASSETS[r.symbol].name)}</span></td><td>${number(r.qty,8)}</td><td>${money(r.costBRL)}</td><td>${r.quoteAvailable?money(r.marketBRL):'<span class="muted">Sem cotação</span>'}</td></tr>`).join(''):'<tr><td colspan="4">Carteira vazia. Registre uma compra para começar.</td></tr>';
  overviewPortfolioPreview(p);
  apexUI?.render();
@@ -179,6 +180,7 @@ function navigate(view){
  state.active=view;
  document.querySelectorAll('.view').forEach(el=>el.classList.toggle('active',el.id==='view-'+view));
  document.querySelectorAll('.nav').forEach(el=>el.classList.toggle('active',el.dataset.view===(view==='asset'?'overview':view)));
+ document.querySelectorAll('.nav').forEach(el=>{if(el.classList.contains('active'))el.setAttribute('aria-current','page');else el.removeAttribute('aria-current');});
  $('breadcrumb').textContent={overview:'MERCADOS',dashboard:'MINHA CARTEIRA',market:'PESQUISA AVANÇADA',asset:'FICHA DO ATIVO',compare:'COMPARADOR',portfolio:'MINHA CARTEIRA',strategies:'LABORATÓRIO',about:'INTEGRAÇÕES'}[view];
  const titles={overview:['Mercados','Todos os ativos catalogados estão disponíveis para seleção direta.'],dashboard:['Minha carteira','Patrimônio e operações registradas neste navegador.'],market:['Pesquisa avançada','Pesquise, filtre e analise ativos com dados verificáveis.'],asset:['Ficha do ativo','Preços e históricos reais, com origem e metodologia.'],compare:['Comparador','Preços e desempenhos normalizados em datas coincidentes.'],portfolio:['Minha carteira','Operações e patrimônio calculados a partir dos seus registros.'],strategies:['Laboratório','Modelos de estudo e simulações quantitativas.'],about:['Integrações','Fontes de dados e condições de atualização.']};
  if($('header-title'))$('header-title').textContent=titles[view][0];
@@ -225,9 +227,13 @@ function addOperation(event){
   const side=$('tx-side').value;
   const obj={id:'tx_'+(globalThis.crypto?.randomUUID?.()||Date.now().toString(36)+Math.random().toString(36).slice(2)).replaceAll('-',''),date:$('tx-date').value,symbol:$('tx-symbol').value,side,qty:side==='income'?0:Number($('tx-qty').value),unitPrice:Number($('tx-price').value),fx:Number($('tx-fx').value),fee:Number($('tx-fee').value||0)};
   const cleaned=validateTransaction(obj,state.transactions);
-  state.transactions.push(cleaned);save();portfolioView();
+  save([...state.transactions,cleaned]);portfolioView();
   $('tx-qty').value='';$('tx-price').value='';$('tx-fee').value='0';feedback.textContent='Operação salva localmente e cálculo atualizado.';
  }catch(e){feedback.classList.add('error');feedback.textContent=e.message;}
+}
+function downloadText(body,name){
+ const url=URL.createObjectURL(new Blob([body],{type:'text/plain;charset=utf-8'}));
+ const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 function exportBackup(){
  const body=JSON.stringify({version:3,brand:'VEZORI',exportedAt:new Date().toISOString(),transactions:state.transactions},null,2);
@@ -239,7 +245,7 @@ async function importBackup(e){
   if(file.size>4_000_000)throw Error('Arquivo excede 4 MB');
   const arr=parseBackup(await file.text());
   if(!confirm(`Importar ${arr.length} operações? O histórico local atual será substituído.`))return;
-  state.transactions=arr;save();portfolioView();$('portfolio-msg').textContent=`Backup validado: ${arr.length} operações importadas.`;
+  save(arr,{replaceDamaged:true});portfolioView();$('portfolio-msg').textContent=`Backup validado: ${arr.length} operações importadas.`;
  }catch(err){$('portfolio-msg').textContent='Falha ao importar: '+err.message;}
  finally{e.target.value='';}
 }
@@ -299,13 +305,16 @@ function init(){
  $('refresh').addEventListener('click',refresh);
  $('tx-symbol').addEventListener('change',changeOperationUI);$('tx-side').addEventListener('change',changeOperationUI);
  $('transaction-form').addEventListener('submit',addOperation);
- $('export-data').addEventListener('click',exportBackup);$('import-data').addEventListener('change',importBackup);
- $('clear-portfolio').addEventListener('click',()=>{if(confirm('Apagar todas as operações deste navegador? Exporte o backup antes de confirmar.')){state.transactions=[];save();portfolioView();}});
+ $('export-data').addEventListener('click',exportBackup);
+ $('export-original').addEventListener('click',()=>downloadText(storage.raw(),'vezori-original-local.json'));
+ $('export-recovery').addEventListener('click',()=>downloadText(storage.recovery()||'','vezori-recuperacao.json'));
+ $('export-csv').addEventListener('click',()=>downloadText('id,date,symbol,side,qty,unitPrice,fx,fee\r\n'+state.transactions.map(t=>[t.id,t.date,t.symbol,t.side,t.qty,t.unitPrice,t.fx,t.fee].join(',')).join('\r\n'),'vezori-operacoes.csv'));$('import-data').addEventListener('change',importBackup);
+ $('clear-portfolio').addEventListener('click',()=>{if(confirm('Apagar todas as operações deste navegador? Exporte o backup antes de confirmar.')){try{save([]);portfolioView();}catch(e){$('portfolio-msg').textContent=e.message;}}});
  $('transactions-table').addEventListener('click',event=>{
   const id=event.target.closest('[data-delete]')?.dataset.delete;if(!id)return;
   if(!confirm('Excluir esta operação? O histórico de custo médio será reprocessado.'))return;
   const next=state.transactions.filter(t=>t.id!==id);
-  try{book(next);state.transactions=next;save();portfolioView();}catch(err){alert('Não é possível excluir esta operação: '+err.message);}
+  try{book(next);save(next);portfolioView();}catch(err){alert('Não é possível excluir esta operação: '+err.message);}
  });
  $('sim-form').addEventListener('submit',event=>{event.preventDefault();simulationView();});
  $('lookup-form').addEventListener('submit',lookup);$('history-form').addEventListener('submit',history);

@@ -1,3 +1,4 @@
+import {validISODate} from './history-contract.js';
 /** VEZORI / SEC companyfacts — US-GAAP facts with provenance.
  * Only accepted annual 10-K facts; no valuation multiples inferred from incomplete data.
  */
@@ -6,10 +7,11 @@ const annualDays=(a,b)=>{
  const start=Date.parse(a),end=Date.parse(b);
  return Number.isFinite(start)&&Number.isFinite(end)?(end-start)/86400000:null;
 };
-const validDate=s=>typeof s==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(s)&&Number.isFinite(Date.parse(s));
+const validDate=validISODate;
 function annualCandidates(doc,concepts,unit,periodEnd=null,duration=false){
  const facts=doc?.facts?.['us-gaap'];
  if(!facts)return [];
+ const all=[];
  for(const concept of concepts){
   const source=facts[concept]?.units?.[unit]||[];
   const candidates=source.filter(x=>{
@@ -19,9 +21,9 @@ function annualCandidates(doc,concepts,unit,periodEnd=null,duration=false){
    if(duration){const days=annualDays(x.start,x.end);if(days===null||days<330||days>380)return false;}
    return true;
   }).sort((a,b)=>b.end.localeCompare(a.end)||b.filed.localeCompare(a.filed));
-  if(candidates.length)return candidates.map(x=>({...x,concept}));
+  all.push(...candidates.map(x=>({...x,concept})));
  }
- return [];
+ return all.sort((a,b)=>b.end.localeCompare(a.end)||b.filed.localeCompare(a.filed));
 }
 function metric(item,unit){
  if(!item)return null;
@@ -38,13 +40,14 @@ export function extractSECAnnualFacts(document,symbol='AAPL'){
  if(!latest)return {status:'insufficient',symbol,cik:company.cik,companyName:document.entityName||company.name,
   source:'SEC companyfacts',metrics:{},message:'Nenhuma receita anual padronizada de 10-K disponível nesta taxonomia.'};
  const end=latest.end, rev=metric(latest,'USD');
- const income=metric(annualCandidates(document,['NetIncomeLoss'],'USD',end,true)[0],'USD');
- const assets=metric(annualCandidates(document,['Assets'],'USD',end)[0],'USD');
- const liabilities=metric(annualCandidates(document,['Liabilities'],'USD',end)[0],'USD');
- const equity=metric(annualCandidates(document,['StockholdersEquity'],'USD',end)[0],'USD');
+ const sameFiling=x=>x.accn===latest.accn&&x.filed===latest.filed;
+ const income=metric(annualCandidates(document,['NetIncomeLoss'],'USD',end,true).find(x=>sameFiling(x)&&x.start===latest.start),'USD');
+ const assets=metric(annualCandidates(document,['Assets'],'USD',end).find(sameFiling),'USD');
+ const liabilities=metric(annualCandidates(document,['Liabilities'],'USD',end).find(sameFiling),'USD');
+ const equity=metric(annualCandidates(document,['StockholdersEquity'],'USD',end).find(sameFiling),'USD');
  const oldEquity=annualCandidates(document,['StockholdersEquity'],'USD',null,false)
-  .filter(x=>x.end<end).sort((a,b)=>b.end.localeCompare(a.end)||b.filed.localeCompare(a.filed))[0];
- const avgEquity=equity&&oldEquity&&(equity.value+oldEquity.val)/2>0?(equity.value+oldEquity.val)/2:null;
+  .filter(x=>sameFiling(x)&&x.end<end&&annualDays(x.end,end)>=330&&annualDays(x.end,end)<=380).sort((a,b)=>b.end.localeCompare(a.end)||b.filed.localeCompare(a.filed))[0];
+ const avgEquity=equity&&oldEquity&&equity.value>0&&oldEquity.val>0?(equity.value+oldEquity.val)/2:null;
  const margin=income&&rev.value>0?income.value/rev.value*100:null;
  const roe=income&&avgEquity?income.value/avgEquity*100:null;
  return {status:'available',symbol,cik:company.cik,companyName:document.entityName||company.name,

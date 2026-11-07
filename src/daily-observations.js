@@ -1,9 +1,11 @@
+import {sealRecord,verifyRecord} from './record-integrity.js';
+import {validISODate} from './history-contract.js';
 /** VEZORI — arquivo incremental das observações diárias.
  * Observação de cotação não é fechamento oficial, candle OHLC nem retorno total.
  * Nenhum dado é interpolado ou corrigido retrospectivamente.
  */
 export const OBSERVATION_PREFIX='vezori:observations:v1:';
-const okDate=d=>/^\d{4}-\d{2}-\d{2}$/.test(d)&&!Number.isNaN(Date.parse(d+'T00:00:00Z'));
+const okDate=validISODate;
 const okPrice=p=>typeof p==='number'&&Number.isFinite(p)&&p>0;
 const okQuote=q=>q&&['BR','US','CRYPTO'].includes(q.market)&&/^[A-Z0-9.]{1,12}$/.test(q.symbol||'')&&/^[A-Z]{3}$/.test(q.currency||'')&&okPrice(q.price)&&typeof q.provider==='string'&&q.provider.length>0;
 export const observationKey=(market,symbol,month)=>OBSERVATION_PREFIX+market+':'+symbol+':'+month;
@@ -24,10 +26,13 @@ export async function appendDailyObservations(store,market,capturedAt=new Date()
   const k=observationKey(q.market,q.symbol,month),previous=await store.get(k,'json');
   // A series can never combine assets or currencies from different objects.
   if(previous&&(previous.schemaVersion!==1||previous.market!==q.market||previous.symbol!==q.symbol||previous.currency!==q.currency||!Array.isArray(previous.points)))throw Error('Arquivo histórico inconsistente');
+  if(previous)await verifyRecord(previous);
   const pts=previous?.points||[];
+  if(pts.some(p=>!okDate(p.date)||p.date.slice(0,7)!==month||!okPrice(p.price)))throw Error('Arquivo contém observação inválida; não sobrescrever');
+  if(new Set(pts.map(p=>p.date)).size!==pts.length)throw Error('Arquivo contém datas duplicadas; não sobrescrever');
   if(pts.some(p=>p.date===day)){skipped++;continue;}
   const next=[...pts,normalize(q,day,instant.toISOString())].sort((a,b)=>a.date.localeCompare(b.date));
-  await store.put(k,JSON.stringify({schemaVersion:1,market:q.market,symbol:q.symbol,currency:q.currency,month,points:next}));
+  await store.put(k,JSON.stringify(await sealRecord({schemaVersion:1,market:q.market,symbol:q.symbol,currency:q.currency,month,points:next})));
   stored++;
  }
  return {status:'archived',captureDate:day,stored,skipped};
@@ -46,6 +51,7 @@ export async function readDailyObservations(store,{market,symbol,months=12,asOf=
   if(!validMonth(month))throw Error('Mês inválido');
   const data=await store.get(observationKey(market,symbol,month),'json');
   if(!data)continue;
+  await verifyRecord(data);
   if(data.schemaVersion!==1||data.market!==market||data.symbol!==symbol||data.month!==month||!Array.isArray(data.points)||data.currency!==currency&&currency!==null)throw Error('Arquivo histórico inconsistente');
   currency=data.currency;
   for(const p of data.points){
@@ -53,6 +59,7 @@ export async function readDailyObservations(store,{market,symbol,months=12,asOf=
    points.push({...p});
   }
  }
+ points.sort((a,b)=>a.date.localeCompare(b.date));
  const seen=new Set();
  for(const p of points){if(seen.has(p.date))throw Error('Observação duplicada');seen.add(p.date);}
  const previous=new Date(Date.UTC(end.getUTCFullYear(),end.getUTCMonth()-months,1)).toISOString().slice(0,7);

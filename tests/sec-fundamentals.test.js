@@ -8,7 +8,7 @@ const fixture={cik:320193,entityName:'Apple Inc.',facts:{'us-gaap':{
  NetIncomeLoss:{units:{USD:[fact(100)]}},
  Assets:{units:{USD:[fact(700)]}},
  Liabilities:{units:{USD:[fact(400)]}},
- StockholdersEquity:{units:{USD:[fact(300),fact(250,'2025-09-27','2025-11-03','2024-09-29')]}},
+ StockholdersEquity:{units:{USD:[fact(300),fact(250,'2025-09-27','2026-11-03','2024-09-29')]}},
 }}};
 test('SEC derives ratios only from same fiscal year and validated annual periods',()=>{
  const result=extractSECAnnualFacts(fixture);
@@ -37,4 +37,20 @@ test('SEC handles absent revenue and rejects wrong issuer',()=>{
  delete doc.facts['us-gaap'].RevenueFromContractWithCustomerExcludingAssessedTax;
  assert.equal(extractSECAnnualFacts(doc).status,'insufficient');
  assert.throws(()=>extractSECAnnualFacts({...fixture,cik:123}),/CIK/);
+});
+
+test('SEC rejects mismatched filing, duration and quarterly prior equity',()=>{
+ const doc=structuredClone(fixture);
+ doc.facts['us-gaap'].NetIncomeLoss.units.USD=[{...fact(100),start:'2025-10-15'}];
+ doc.facts['us-gaap'].StockholdersEquity.units.USD=[fact(300),fact(250,'2026-06-27')];
+ let r=extractSECAnnualFacts(doc);assert.equal(r.metrics.netMarginPct,null);assert.equal(r.metrics.roePct,null);
+ doc.facts['us-gaap'].NetIncomeLoss.units.USD=[{...fact(100),accn:'different-revision'}];
+ r=extractSECAnnualFacts(doc);assert.equal(r.metrics.netIncome,null);
+});
+
+test('SEC seleciona exercício mais recente entre conceitos alternativos de receita',()=>{
+ const doc=structuredClone(fixture);
+ doc.facts['us-gaap'].RevenueFromContractWithCustomerExcludingAssessedTax.units.USD=[fact(330,'2025-09-27','2025-11-03','2024-09-29')];
+ doc.facts['us-gaap'].Revenues={units:{USD:[fact(400)]}};
+ assert.equal(extractSECAnnualFacts(doc).periodEnd,'2026-09-26');
 });

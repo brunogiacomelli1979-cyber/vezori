@@ -30,11 +30,11 @@ jobs:
       - name: Instalar Node.js
         uses: actions/setup-node@v5
         with:
-          node-version: '22'
+          node-version: '24'
           package-manager-cache: false
 
       - name: Instalar dependencias
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
 
       - name: Verificar sintaxe e executar testes
         run: npm run check
@@ -42,7 +42,9 @@ jobs:
         with:
           python-version: '3.12'
       - name: Validar extratores e publicação CVM
-        run: python -m unittest discover -s tests -p 'test_*cvm*.py'
+        run: python -m unittest discover -s tests -p 'test_*.py'
+      - name: Preparar bibliotecas locais com versões fixadas
+        run: npm run build
       - name: Construir demonstrativos CVM 2025 a partir da fonte oficial
         run: python -m scripts.publish_cvm_fundamentals --year 2025 --out-dir public/data/fundamentals
 
@@ -59,17 +61,41 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: node scripts/provision_kv.mjs --required
 
+      - name: Comprovar escrita e releitura KV sem alterar dados financeiros
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node scripts/verify-kv.mjs
+
+      - name: Registrar versão anterior para recuperação
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node scripts/save-deployment.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vezori-rollback-${{ github.sha }}
+          path: out/rollback.json
+          retention-days: 30
+
       - name: Publicar VEZORI via Wrangler
         if: ${{ env.CF_TOKEN_CONFIGURED == 'true' && env.CF_ACCOUNT_CONFIGURED == 'true' }}
         uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy
+          command: deploy --var RELEASE_SHA:${{ github.sha }}
+
+      - name: Captura controlada de observação oficial autorizada (BCB)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node scripts/capture-authorized.mjs
 
       - name: Validar site e dados reais publicados
         if: ${{ env.CF_TOKEN_CONFIGURED == 'true' && env.CF_ACCOUNT_CONFIGURED == 'true' }}
         env:
+          EXPECTED_SHA: ${{ github.sha }}
           SITE_URL: https://vezori.bruno-giacomelli1979.workers.dev
         run: |
           node --input-type=module <<'NODE'
@@ -85,6 +111,7 @@ jobs:
           if (!/VEZORI/i.test(html)) throw new Error('A pagina principal nao contem a marca VEZORI');
           const health = await read('/api/health');
           if (health.service !== 'VEZORI' || health.status !== 'ok') throw new Error('API de saude invalida');
+          if(health.release!==process.env.EXPECTED_SHA||health.version!=='4.0.0')throw new Error('Commit/versao publicados divergentes');
           if(!health.sourcesConfigured?.marketSnapshotStorage)throw new Error('Deploy sem MARKET_SNAPSHOTS: arquivo historico nao sera persistido');
           console.log('ARMAZENAMENTO PERSISTENTE: KV vinculado');
           const cvm=await read('/api/fundamentals?market=BR&symbol=PETR3');
@@ -98,14 +125,17 @@ jobs:
           if (!html.includes('id="research-price-zones"') || !html.includes('id="research-crypto-sentiment"')) throw new Error('Paineis de faixas e sentimento ausentes no HTML publicado');
           if (!html.includes('id="storage-diagnostic-status"')) throw new Error('Diagnostico do armazenamento nao esta na aba Integracoes');
           if (!html.includes('<option value="max">Máximo disponível</option>')) throw new Error('Controles de historia longa nao publicados');
-          const storageResponse=await fetch(root+'/api/storage-status',{signal:AbortSignal.timeout(15000)});
-          if(!storageResponse.ok)throw new Error('Diagnostico KV inacessivel: '+storageResponse.status);
-          const storage=await storageResponse.json();
-          if(!['not_configured','configured_empty','active'].includes(storage.status))throw new Error('Diagnostico KV inconsistente: '+storage.status);
-          if(storage.status==='not_configured')throw new Error('Binding KV ausente em producao');
-          if(storage.status!=='active')console.log('::warning::KV vinculado mas ainda nao confirmou captura persistente: '+storage.status);
-          else console.log('ARQUIVO PERSISTENTE ATIVO:',storage.latestSnapshot?.date,storage.archiveSample?.status);
-          const observationResponse=await fetch(root+'/api/observations?market=BR&symbol=PETR4&months=2',{signal:AbortSignal.timeout(15000)});
+          let storage;
+          for(let attempt=0;attempt<10;attempt++){
+            const response=await fetch(root+'/api/storage-status?probe='+Date.now(),{signal:AbortSignal.timeout(15000)});
+            if(!response.ok)throw Error('Diagnostico KV inacessivel: '+response.status);
+            storage=await response.json();
+            if(storage.status==='active'&&storage.latestSnapshot?.macroObservations>0)break;
+            await new Promise(resolve=>setTimeout(resolve,10000));
+          }
+          if(storage?.status!=='active'||!(storage.latestSnapshot?.macroObservations>0))throw Error('Captura macro oficial nao legivel pelo Worker apos espera limitada');
+          console.log('ARQUIVO PERSISTENTE ATIVO:',storage.latestSnapshot.date,storage.latestSnapshot.macroObservations,'observacoes macro;',storage.latestSnapshot.integrity);
+          const observationResponse=await fetch(root+'/api/observations?market=CRYPTO&symbol=BTC&months=2',{signal:AbortSignal.timeout(15000)});
           if(!observationResponse.ok)throw new Error('Endpoint de arquivo diario indisponivel');
           const observations=await observationResponse.json();
           if(!['storage_not_configured','no_observations','available'].includes(observations.status))throw new Error('Contrato de arquivo diario invalido');
@@ -159,10 +189,16 @@ jobs:
             console.log('::warning::Cesta historica BR nao validada no provedor nesta execucao: ' + error.message);
           }
           if (!html.includes('id="home-rankings"') || !/\/home\.css\?v=\d+/.test(html) || !html.includes('id="lab-zero-warning"')) throw new Error('Frontend de mercados e laboratorio nao esta publicado');
+          if(health.sourcesConfigured.brPublicDisplayAuthorized){
           const catalog = await read('/api/catalog?limit=5&page=1');
           if (catalog.mode !== 'real_market_catalog' || !Array.isArray(catalog.items) || !catalog.items.length) throw new Error('Catalogo B3 sem itens da fonte');
           if (catalog.items.some(item => !item.symbol || !item.provider)) throw new Error('Itens B3 sem origem verificavel');
           console.log('CATALOGO B3:', catalog.items.length, 'de', catalog.totalCount ?? 'total nao fornecido');
+          }else{
+            const gated=await fetch(root+'/api/catalog?limit=5&page=1');
+            if(gated.status!==422)throw Error('Catálogo B3 liberado sem autorização de redistribuição');
+            console.log('B3: adaptador preservado, redistribuição bloqueada até autorização documentada');
+          }
           console.log('SITE ONLINE:', root);
           console.log('HEALTH:', health.status);
           console.log('COTACOES COM PRECO REAL:', validQuotes.length);

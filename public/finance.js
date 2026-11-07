@@ -1,10 +1,6 @@
 /** VEZORI finance engine. No manufactured prices, no short sales, no assumptions of tax basis. */
-export const ASSETS=Object.freeze({
-  PETR4:{currency:'BRL',market:'BR',name:'Petrobras PN'},VALE3:{currency:'BRL',market:'BR',name:'Vale ON'},ITUB4:{currency:'BRL',market:'BR',name:'Itaú PN'},MGLU3:{currency:'BRL',market:'BR',name:'Magazine Luiza'},
-  VOO:{currency:'USD',market:'US',name:'Vanguard S&P 500'},QQQ:{currency:'USD',market:'US',name:'Invesco Nasdaq 100'},AAPL:{currency:'USD',market:'US',name:'Apple'},
-  MSFT:{currency:'USD',market:'US',name:'Microsoft'},O:{currency:'USD',market:'US',name:'Realty Income (REIT)'},PLD:{currency:'USD',market:'US',name:'Prologis (REIT)'},
-  BTC:{currency:'BRL',market:'CRYPTO',name:'Bitcoin'},ETH:{currency:'BRL',market:'CRYPTO',name:'Ethereum'},SOL:{currency:'BRL',market:'CRYPTO',name:'Solana'}
-});
+import {ASSETS} from './asset-registry.js';
+export {ASSETS} from './asset-registry.js';
 export const KEY='vezori-portfolio-v3';
 export const STRATEGIES=[
  {title:'Indexação Global',by:'Inspirada em John Bogle',desc:'Disciplina, diversificação global e baixo custo. A alocação é didática, não uma carteira oficial.',allocation:[['Ações amplas',70],['Renda fixa',30]],review:'Anual'},
@@ -20,8 +16,8 @@ export function validDate(date){
  if(typeof date!=='string'||!/^(\d{4})-(\d{2})-(\d{2})$/.test(date))return false;
  const d=new Date(date+'T12:00:00.000Z');return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===date;
 }
-export function validateTransaction(tx,existing=[]){
- if(!tx||!ASSETS[tx.symbol])throw Error('Ativo não suportado.');
+function transactionFields(tx){
+ if(!tx||!Object.hasOwn(ASSETS,tx.symbol))throw Error('Ativo não suportado.');
  if(!['buy','sell','income'].includes(tx.side))throw Error('Tipo de operação inválido.');
  if(!validDate(tx.date))throw Error('Data inválida.');
  if(!/^[a-zA-Z0-9_-]{1,60}$/.test(String(tx.id||'')))throw Error('Identificador inválido.');
@@ -33,12 +29,17 @@ export function validateTransaction(tx,existing=[]){
  if(tx.side==='sell'&&fee>=qty*unitPrice)throw Error('Taxa não pode consumir toda a venda.');
  if(ASSETS[tx.symbol].currency==='BRL'&&Math.abs(fx-1)>1e-9)throw Error('Câmbio BRL deve ser 1.');
  const safe={id:String(tx.id),date:tx.date,symbol:tx.symbol,side:tx.side,qty,unitPrice,fx,fee};
+ return safe;
+}
+export function validateTransaction(tx,existing=[]){
+ const safe=transactionFields(tx);
  if(existing.some(t=>t.id===safe.id))throw Error('Operação duplicada.');
  book([...existing,safe]);return safe;
 }
 export function book(txs){
  if(!Array.isArray(txs)||txs.length>20000)throw Error('Histórico excede o limite permitido.');
- const positions={};
+ const positions=Object.create(null);
+ for(const tx of txs)transactionFields(tx);
  const ordered=txs.map((tx,i)=>({tx,i})).sort((a,b)=>a.tx.date.localeCompare(b.tx.date)||a.i-b.i);
  for(const {tx} of ordered){
   if(!ASSETS[tx.symbol]||!validDate(tx.date)||!['buy','sell','income'].includes(tx.side))throw Error('Transação inválida.');
@@ -57,6 +58,7 @@ export function book(txs){
    if(fee>=price)throw Error('Taxa do provento inválida.');
    p.incomeBRL+=(price-fee)*fx;
   }
+  if(![p.qty,p.costBRL,p.realizedBRL,p.incomeBRL].every(Number.isFinite))throw Error('Operação excede a precisão numérica suportada.');
   positions[tx.symbol]=p;
  }
  return Object.values(positions);
@@ -69,7 +71,7 @@ export function portfolio(txs,quotes=[],fx=[]){
  let marketBRL=0,costBRL=0,knownCostBRL=0,unrealizedBRL=0;
  const rows=positions.map(p=>{
   const currency=ASSETS[p.symbol].currency,q=quoteMap.get(p.symbol),rate=currency==='BRL'?1:fxMap.get(currency+'/BRL');
-  const valid=!!q&&q.currency===currency&&finitePositive(Number(q.price))&&finitePositive(rate);
+  const valid=!!q&&(q.market==null||q.market===ASSETS[p.symbol].market)&&q.currency===currency&&finitePositive(Number(q.price))&&finitePositive(rate);
   const value=valid?p.qty*Number(q.price)*rate:null;
   costBRL+=p.costBRL;
   if(valid){marketBRL+=value;knownCostBRL+=p.costBRL;unrealizedBRL+=value-p.costBRL;}
@@ -101,7 +103,7 @@ export function xirr(flows){
  return (low+high)/2;
 }
 export function portfolioXirr(txs,summary,asOf=new Date().toISOString().slice(0,10)){
- if(!txs.length||!summary.complete||!validDate(asOf))return null;
+ if(!txs.length||!summary.complete||!validDate(asOf)||txs.some(t=>t.date>asOf))return null;
  const flows=txs.map(t=>{
   const fx=Number(t.fx),fee=Number(t.fee??0);
   const amount=t.side==='income'?(Number(t.unitPrice)-fee)*fx:(t.side==='buy'?-1:1)*(Number(t.qty)*Number(t.unitPrice)+(t.side==='buy'?fee:-fee))*fx;
@@ -113,13 +115,14 @@ export function portfolioXirr(txs,summary,asOf=new Date().toISOString().slice(0,
 export function project(initial,monthly,annualRate,years){
  if(![initial,monthly,annualRate,years].every(finite)||initial<0||monthly<0||annualRate<=-1||annualRate>20||!Number.isInteger(years)||years<1||years>40)throw Error('Parâmetros de simulação inválidos.');
  let amount=initial,contributions=initial;const monthlyRate=Math.pow(1+annualRate,1/12)-1;const values=[];
- for(let n=1;n<=years*12;n++){amount=amount*(1+monthlyRate)+monthly;contributions+=monthly;if(n%12===0)values.push({year:n/12,amount,contributions});}
+ for(let n=1;n<=years*12;n++){amount=amount*(1+monthlyRate)+monthly;contributions+=monthly;if(!Number.isFinite(amount)||!Number.isFinite(contributions))throw Error('Projeção excede o limite numérico.');if(n%12===0)values.push({year:n/12,amount,contributions});}
  return values;
 }
 export function parseBackup(text){
  const obj=JSON.parse(text);
  if(!obj||![2,3].includes(obj.version)||!Array.isArray(obj.transactions)||obj.transactions.length>20000)throw Error('Backup inválido.');
- const checked=[];
- for(const tx of obj.transactions)checked.push(validateTransaction({...tx,fee:tx.fee??0},checked));
+ const checked=obj.transactions.map(tx=>transactionFields({...tx,fee:tx?.fee??0}));
+ if(new Set(checked.map(t=>t.id)).size!==checked.length)throw Error('Operação duplicada.');
+ book(checked);
  return checked;
 }

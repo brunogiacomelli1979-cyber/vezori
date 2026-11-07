@@ -51,3 +51,10 @@ test('simulação: taxa zero soma exatamente contribuições',()=>{
  const a=project(10000,300,0,10).at(-1);near(a.amount,46000,1e-5);near(a.contributions,46000,1e-5);
  assert.throws(()=>project(1,300,-1.5,10),/inválidos/);
 });
+
+test('overflow financeiro e cotação de mercado divergente não geram patrimônio válido',()=>{
+ assert.throws(()=>book([{...buy,qty:1e308,unitPrice:1e308}]),/precisão/);
+ assert.throws(()=>project(1e308,0,20,40),/limite numérico/);
+ const p=portfolio([buy],[{symbol:'PETR4',currency:'BRL',market:'US',price:30}]);
+ assert.equal(p.complete,false);assert.equal(p.rows[0].marketBRL,null);
+});

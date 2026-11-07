@@ -1,3 +1,4 @@
+import {sealRecord,verifyRecord} from './record-integrity.js';
 /** VEZORI daily data snapshots — cloud KV optional, no faked prices or fills. */
 export const SNAPSHOT_PREFIX='vezori:market:';
 export function validateMarketSnapshot(d){
@@ -15,6 +16,7 @@ export async function persistDailySnapshot(store,market,capturedAt=new Date()){
  if(latest?.captureDate>day)return {status:'out_of_order',captureDate:day,latestCaptureDate:latest.captureDate};
  const saved=await store.get(SNAPSHOT_PREFIX+day,'json');
  if(saved){
+  await verifyRecord(saved);
   if(saved.schemaVersion!==1||saved.captureDate!==day||!validateMarketSnapshot(saved.data))throw Error('Snapshot diario previamente gravado e invalido; nao sobrescrever');
   // Recover a partial put (day succeeded, latest failed) without ever replacing
   // the original observations with today's possibly different provider prices.
@@ -22,13 +24,13 @@ export async function persistDailySnapshot(store,market,capturedAt=new Date()){
   return {status:'already_recorded',captureDate:day};
  }
  if(latest?.captureDate===day)throw Error('Indice latest sem snapshot diario correspondente');
- const item={
+ const item=await sealRecord({
   schemaVersion:1,
   captureDate:day,
   capturedAt:moment.toISOString(),
   sourceGeneratedAt:market.generatedAt||null,
   data:market
- };
+ });
  const value=JSON.stringify(item);
  await store.put(SNAPSHOT_PREFIX+day,value);
  await store.put(SNAPSHOT_PREFIX+'latest',value);
@@ -38,6 +40,7 @@ export async function latestDailySnapshot(store,asOf=new Date()){
  if(!store||typeof store.get!=='function')return null;
  const item=await store.get(SNAPSHOT_PREFIX+'latest','json');
  if(!item||item.schemaVersion!==1||!validateMarketSnapshot(item.data))return null;
+ await verifyRecord(item);
  const now=new Date(asOf).getTime(),recorded=new Date(item.capturedAt).getTime();
  if(!Number.isFinite(now)||!Number.isFinite(recorded)||recorded>now+60000)return null;
  const ageHours=(now-recorded)/3600000;
