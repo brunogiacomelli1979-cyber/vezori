@@ -246,7 +246,7 @@ export default {
     symbol=String(url.searchParams.get('symbol')||'').toUpperCase(),
     months=Number(url.searchParams.get('months')||12);
    const through=url.searchParams.get('through');
-   if(!['BR','US','CRYPTO'].includes(market)||!/^[A-Z0-9.]{1,12}$/.test(symbol)||!Number.isInteger(months)||months<1||months>24||through!==null&&!/^\\d{4}-(0[1-9]|1[0-2])$/.test(through))return fail('Parâmetros inválidos',400);
+   if(!['BR','US','CRYPTO'].includes(market)||!/^[A-Z0-9.]{1,12}$/.test(symbol)||!Number.isInteger(months)||months<1||months>24||through!==null&&!/^\d{4}-(0[1-9]|1[0-2])$/.test(through))return fail('Parâmetros inválidos',400);
    try{
     const asOf=through?new Date(Date.UTC(Number(through.slice(0,4)),Number(through.slice(5,7)),0,23,59,59)):new Date();
     if(!Number.isFinite(asOf.getTime())||asOf>new Date()||asOf.getUTCFullYear()<2000)return fail('Período inválido',400);
