@@ -17,8 +17,8 @@
   <link rel="stylesheet" href="/lab.css?v=28" />
   <script defer src="/vendor/chart.js"></script>
   <script defer src="/vendor/lightweight-charts.js"></script>
-  <link rel="stylesheet" href="/v4.css?v=40" />
-  <script type="module" src="/app.js"></script>
+  <link rel="stylesheet" href="/v4.css?v=41" />
+  <script type="module" src="/app.js?v=41"></script>
 </head>
 <body>
   <a class="skip-link" href="#page-content">Pular para conteúdo</a>
@@ -69,6 +69,19 @@
             <div class="home-indicator"><span>Câmbio EUR / BRL</span><strong>—</strong><small>Consultando</small></div>
             <div class="home-indicator"><span>Meta Selic</span><strong>—</strong><small>Consultando</small></div>
           </div>
+          <section class="panel home-engine-spotlight" aria-label="Bases oficiais disponíveis para pesquisa">
+            <div class="home-engine-head">
+              <div>
+                <span class="home-eyebrow">VEZORI / DADOS OFICIAIS</span>
+                <h2>Uma nova base para pesquisar investimentos</h2>
+                <p>Demonstrativos CVM, fundos, FIIs, Tesouro e indicadores econômicos com origem e competência identificadas.</p>
+              </div>
+              <button class="button primary" type="button" id="home-engine-open" data-go="about">Explorar dados oficiais →</button>
+            </div>
+            <p id="home-engine-status" class="micro-note" role="status">Verificando o acervo publicado…</p>
+            <div id="home-engine-coverage" class="home-engine-coverage" aria-label="Cobertura publicada por base oficial"></div>
+            <p class="micro-note">Estes registros são dados contábeis, patrimoniais ou taxas de referência; não representam cotações em bolsa. Os dados de preços continuam limitados às fontes autorizadas.</p>
+          </section>
           <div id="home-rankings" class="market-rank-grid" aria-label="Rankings compactos de mercado">
             <div class="market-rank-loading">Preparando rankings a partir das cotações recebidas…</div>
           </div>
