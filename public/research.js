@@ -109,6 +109,8 @@ export function createResearchTools({state,navigate,getJson}){
   if(which==='compare'&&comparisonChart){comparisonChart.destroy();comparisonChart=null;}
   const fallback=$(which==='detail'?'research-asset-chart-fallback':'research-compare-chart-fallback');
   // Preferred: interactive price chart with crosshair and zoom; Chart.js remains as offline fallback.
+  // fitContent must measure the visible host, otherwise all dates collapse at the right edge.
+  host.hidden=false;canvas.hidden=true;fallback.hidden=true;
   const premium=mountMarketChart(host,labels,datasets,window.LightweightCharts);
   if(premium){
    host.hidden=false;canvas.hidden=true;fallback.hidden=true;

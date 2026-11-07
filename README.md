@@ -8,9 +8,9 @@ Pesquisa de mercado, carteira local e simulações educacionais com fontes ident
 
 A publicação desta versão deve ser confirmada em `/api/health`: `version:4.0.0` e `release` igual ao SHA do deploy. Um workflow verde ou um namespace criado, isoladamente, não comprovam histórico de preços operacional. O relatório de aceite em `docs/ACCEPTANCE_4.md` registra o resultado verificado.
 
-![Mercados — captura real do ambiente local, sem preços de demonstração](docs/images/mercados-local.png)
+![Mercados — captura real de produção em 07/11/2026](docs/images/mercados-producao.png)
 
-[Laboratório em tela de 390 px — captura real local](docs/images/laboratorio-local-mobile.png). A disponibilidade das fontes no ambiente local difere da produção; o relatório final registra a inspeção publicada.
+[Laboratório em tela de 390 px — captura real de produção](docs/images/laboratorio-producao-mobile.png). Versão e horário das evidências em [Aceite](docs/ACCEPTANCE_4.md); [captura local anterior](docs/images/mercados-local.png) preservada para comparação.
 
 | Área | Comportamento |
 |---|---|
