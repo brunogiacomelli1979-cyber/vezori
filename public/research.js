@@ -316,7 +316,7 @@ export function createResearchTools({state,navigate,getJson}){
     const archive=await getJson('/api/observations?market='+m+'&symbol='+encodeURIComponent(selected)+'&months=24');
     if(request!==detailRequest)return;
     if(archive.status==='available'&&archive.points?.length>=2){
-     const points=archive.points.filter(p=>/^\\d{4}-\\d{2}-\\d{2}$/.test(p.date)&&Number.isFinite(p.price)&&p.price>0);
+     const points=archive.points.filter(p=>/^\d{4}-\d{2}-\d{2}$/.test(p.date)&&Number.isFinite(p.price)&&p.price>0);
      if(points.length>=2){
       $('research-asset-chart').closest('.research-chart').classList.remove('is-missing');
       setChart('detail',points.map(p=>p.date),[{symbol:selected,values:points.map(p=>p.price)}]);
