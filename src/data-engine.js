@@ -45,7 +45,8 @@ export async function dataEngineRoute(request,env){
   if(!datasets.has(dataset))return reply({error:'Dataset inválido'},400);
   if(path==='/api/data-engine/catalog'){
    let q=fold((url.searchParams.get('q')||'').trim());const limit=Number(url.searchParams.get('limit')||25),offset=Number(url.searchParams.get('offset')||0);
-   if(/^[0-9.\-/\s]+$/.test(q))q=q.replace(/[.\-/\s]/g,'');
+   const compact=q.replace(/[.\-/\s]/g,'');
+   if(/^[0-9.\-/\s]+$/.test(q)&&compact.length===14)q=compact;
    if(q.length>80||!Number.isInteger(limit)||limit<1||limit>100||!Number.isInteger(offset)||offset<0||offset>20000)return reply({error:'Filtro/página inválidos'},400);
    const rows=(manifest.catalog[dataset]||[]).filter(x=>!q||fold(`${x.id} ${x.name} ${x.cvmCode||''} ${(x.symbols||[]).join(' ')}`).includes(q)||(/^\d{1,6}$/.test(q)&&x.cvmCode&&Number(q)===Number(x.cvmCode)));
    return reply({status:rows.length?'available':'no_coverage',dataset,items:rows.slice(offset,offset+limit),total:rows.length,offset,limit,hasNextPage:offset+limit<rows.length,sourceStatus:manifest.datasets[dataset]||manifest.blocked[dataset]||null});

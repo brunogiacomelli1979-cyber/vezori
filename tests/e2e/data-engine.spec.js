@@ -28,8 +28,20 @@ test('CSV privado alimenta gráfico sem upload, sem liberar API pública ou toca
  await page.locator('#local-eod-source').fill('Private browser fixture');
  await page.locator('#local-eod-file').setInputFiles({name:'private.csv',mimeType:'text/csv',buffer:Buffer.from('date,market,symbol,currency,close,adjustment\n2026-11-04,BR,PRIVATE11,BRL,20,raw\n2026-11-05,BR,PRIVATE11,BRL,21,raw\n')});
  await page.locator('#local-eod-rights').check();await page.locator('#local-eod-form button').click();await expect(page.locator('#local-eod-status')).toContainText('2 registros privados importados');
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
  await page.locator('#local-eod-open').click();await expect(page.locator('#research-asset-name')).toContainText('PRIVATE11');await expect(page.locator('#research-asset-history-status')).toContainText('Arquivo local');
  await expect(page.locator('#research-asset-lightweight')).toBeVisible();expect(historyRequests).toEqual([]);
  expect(await page.evaluate(()=>localStorage.getItem('vezori-portfolio-v3'))).toBeNull();
  await page.reload();await page.locator('#global-search').fill('PRIVATE11');await page.locator('#global-search-form').press('Enter');await expect(page.locator('#research-asset-history-status')).toContainText('Arquivo local');
+});
+test('troca de base limpa linhas antigas e preserva a identidade do catálogo exibido',async({page})=>{
+ await page.goto('/');await page.locator('#menu [data-view="about"]').click();await page.locator('#engine-query button').click();await expect(page.locator('[data-engine-id="00000000000000"]')).toBeVisible();
+ await page.locator('#engine-dataset').selectOption('macro');
+ const request=page.waitForRequest(r=>r.url().includes('/api/data-engine/record'));
+ await page.locator('[data-engine-id="00000000000000"]').click();expect(new URL((await request).url()).searchParams.get('dataset')).toBe('cvm');
+ let release;const pending=new Promise(resolve=>{release=resolve;});
+ await page.route('**/api/data-engine/catalog?dataset=macro**',async route=>{await pending;await route.fulfill({contentType:'application/json',body:JSON.stringify({items:[{id:'rate',name:'Rate (test fixture)',observations:1,first:'2025-01-01',last:'2025-01-01'}],hasNextPage:false})});});
+ try{
+  await page.locator('#engine-query button').click();await expect(page.locator('[data-engine-id="00000000000000"]')).toHaveCount(0);release();await expect(page.locator('[data-engine-id="rate"]')).toBeVisible();
+ }finally{release();}
 });

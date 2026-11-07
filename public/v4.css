@@ -99,3 +99,4 @@ body .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overf
 body .home-search-field{position:relative;flex-direction:row;margin:0}
 body .research-chart [hidden]{display:none!important}
 body #local-eod-rights{width:18px;min-height:18px;align-self:flex-start}
+body #local-eod-status,body #engine-record-note,body #engine-license,body #engine-blocked{overflow-wrap:anywhere}

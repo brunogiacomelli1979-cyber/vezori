@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {dataEngineRoute} from '../src/data-engine.js';
-import {parseLocalEod,importLocalEod,loadLocalEod,localEodHistory,LOCAL_EOD_KEY} from '../public/local-eod.js';
+import {parseLocalEod,importLocalEod,loadLocalEod,localEodHistory,decodeLocalCsv,verifyLocalEodFiles,LOCAL_EOD_KEY} from '../public/local-eod.js';
 // Deterministic synthetic price scenarios remain exclusively in tests.
 const csv='date,market,symbol,currency,close,adjustment\n2026-11-04,BR,PETR4,BRL,20,raw\n2026-11-05,BR,PETR4,BRL,21,raw\n';
 function memory(){const data=new Map();return {getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,v),data};}
@@ -44,4 +44,15 @@ test('bad pagination, missing records and absent assets are explicit',async()=>{
  assert.equal((await dataEngineRoute(new Request(root+'record?dataset=macro&id=unknown'),f.env)).status,404);
  assert.equal((await dataEngineRoute(new Request(root+'status'),{})).status,503);
  const run=await dataEngineRoute(new Request(root+'runs'),{});assert.equal((await run.json()).continuousOperationProven,false);
+});
+test('maturity-date search is not mistaken for formatted CNPJ',async()=>{
+ const f=await fixture();f.manifest.catalog.treasury=[{...f.entry,name:'Title (test fixture) · 2027-03-01',id:'td_test'}];
+ const response=await dataEngineRoute(new Request('https://vezori.example/api/data-engine/catalog?dataset=treasury&q=2027-03-01'),f.env);
+ assert.equal((await response.json()).total,1);
+});
+test('UTF-8 bytes and BOM are preserved and a tampered backup hash is rejected',async()=>{
+ const bytes=new TextEncoder().encode('\uFEFF'+csv),text=decodeLocalCsv(bytes);assert.equal(text.charCodeAt(0),0xFEFF);
+ assert.throws(()=>decodeLocalCsv(new Uint8Array([0xFF])),/UTF-8/);
+ const store=memory();await importLocalEod(store,text,'Private CSV');const data=loadLocalEod(store);await verifyLocalEodFiles(data);
+ data.files[0].fileSha256='a'.repeat(64);data.activeHash='a'.repeat(64);await assert.rejects(()=>verifyLocalEodFiles(data),/Hash/);
 });

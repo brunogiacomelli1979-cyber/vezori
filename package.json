@@ -12,7 +12,8 @@
     "build": "node scripts/prepare-assets.mjs",
     "predev": "npm run build",
     "test:ui": "playwright test",
-    "test:production": "node tests/production/api.mjs && node tests/production/browser.mjs"
+    "test:production": "node tests/production/api.mjs && node tests/production/browser.mjs",
+    "test:data-production": "node scripts/verify-data-engine.mjs --published-only && node tests/production/data-engine.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",

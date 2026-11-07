@@ -94,6 +94,29 @@ class RealSourceTests(unittest.TestCase):
                 self.assertAlmostEqual(observed['metrics']['netMarginPct'],float(expected),places=10)
             else:
                 self.assertTrue(all(x['status']=='sector_specific_required' and x['metrics']=={} for x in result))
+    def test_all_industrial_ratios_reconcile_with_original_decimal_accounts(self):
+        id='33000167000101';b=Bundle();b.put('cvm',id,self.registry[id],[r for company,_,r in self.rows if company==id])
+        actual=next(x for x in cvm.indicators(b.documents['cvm:'+id]) if x['scope']=='con' and x['periodStart']=='2025-01-01')['metrics']
+        amounts={}
+        with ZipFile(FIX/'cvm-dfp-real.zip') as z:
+            for name in z.namelist():
+                if not any('_'+kind+'_con_' in name for kind in ['BPA','BPP','DRE']):continue
+                for row in csv.DictReader(io.StringIO(z.read(name).decode('latin1')),delimiter=';'):
+                    if ''.join(x for x in row['CNPJ_CIA'] if x.isdigit())==id:
+                        amounts[(row['CD_CONTA'],row['DT_FIM_EXERC'])]=Decimal(row['VL_CONTA'])
+        def current(code):return amounts[(code,'2025-12-31')]
+        expected={'currentRatio':current('1.01')/current('2.01'),'netMarginPct':current('3.11')/current('3.01')*100,'grossMarginPct':current('3.03')/current('3.01')*100,'liabilitiesToAssetsPct':(current('2.01')+current('2.02'))/current('1')*100,'roePct':current('3.11')/((current('2.03')+amounts[('2.03','2024-12-31')])/2)*100}
+        for metric,value in expected.items():self.assertAlmostEqual(actual[metric],float(value),places=10,msg=metric)
+    def test_roe_rejects_nonannual_duration_or_incompatible_equity_date(self):
+        id='33000167000101'
+        for condition in ['income','equity']:
+            b=Bundle();b.put('cvm',id,self.registry[id],copy.deepcopy([r for company,_,r in self.rows if company==id]))
+            doc=b.documents['cvm:'+id]
+            for row in doc['observations']:
+                v=row['values']
+                if condition=='income' and v['periodEnd']=='2025-12-31' and v['statement']=='DRE':v['periodStart']='2024-07-01'
+                if condition=='equity' and v['periodEnd']=='2024-12-31' and v['statement']=='BPP' and v['accountCode']=='2.03':v['periodEnd']='2024-06-30'
+            self.assertTrue(all(x['metrics'].get('roePct') is None for x in cvm.indicators(doc)))
     def test_cvm_schema_change_stops_publication(self):
         with tempfile.TemporaryDirectory() as tmp:
             path=Path(tmp)/'bad.zip'

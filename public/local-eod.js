@@ -1,6 +1,10 @@
 /** Private user-file history. No upload, public licence inference, quote substitution or interpolation. */
 import {validDate} from './finance.js';
 export const LOCAL_EOD_KEY='vezori-local-eod-v1';
+export function decodeLocalCsv(bytes){
+ try{return new TextDecoder('utf-8',{fatal:true,ignoreBOM:true}).decode(bytes);}catch{throw Error('O CSV deve usar UTF-8 válido; nenhuma substituição de caracteres foi feita.');}
+}
+async function fileDigest(text){return [...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text)))].map(x=>x.toString(16).padStart(2,'0')).join('');}
 function csv(text){
  const rows=[];let row=[],field='',quoted=false;
  for(let i=0;i<text.length;i++){
@@ -15,6 +19,7 @@ function csv(text){
 }
 export function parseLocalEod(text,{sourceName,asOf=new Date().toISOString().slice(0,10)}={}){
  if(typeof text!=='string'||new TextEncoder().encode(text).length>1024*1024)throw Error('CSV local limitado a 1 MiB.');
+ if(/[\uD800-\uDFFF\uFFFD]/u.test(text))throw Error('CSV com caracteres inválidos ou substituídos.');
  if(!sourceName?.trim()||sourceName.length>80)throw Error('Informe a origem legítima do arquivo (até 80 caracteres).');
  const table=csv(text.replace(/^\uFEFF/,'')),header=table.shift()?.map(x=>x.trim());
  const required=['date','market','symbol','currency','close','adjustment'];
@@ -62,10 +67,16 @@ export function localEodInstruments(storage){
  return [...result.values()];
 }
 export async function importLocalEod(storage,text,sourceName){
- const file=parseLocalEod(text,{sourceName}),fileSha256=[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text)))].map(x=>x.toString(16).padStart(2,'0')).join('');
+ const file=parseLocalEod(text,{sourceName}),fileSha256=await fileDigest(text);
  const data=loadLocalEod(storage);
+ await verifyLocalEodFiles(data);
  if(!data.files.some(f=>f.fileSha256===fileSha256))data.files.push({...file,fileSha256,importedAt:new Date().toISOString()});
  data.activeHash=fileSha256;saveLocalEod(storage,data);return {fileSha256,observations:file.rows.length};
+}
+export async function verifyLocalEodFiles(data){
+ loadLocalEod({getItem:()=>JSON.stringify(data)});
+ for(const file of data.files)if(await fileDigest(file.originalCsv)!==file.fileSha256)throw Error('Hash do CSV no backup diverge do original; restauração recusada.');
+ return data;
 }
 export function localEodHistory(storage,{market,symbol,currency,range='max',asOf=new Date().toISOString().slice(0,10)}){
  const data=loadLocalEod(storage),file=data.files.find(f=>f.fileSha256===data.activeHash);
