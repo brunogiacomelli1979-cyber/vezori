@@ -1,4 +1,6 @@
 import {createPortfolioStorage} from './portfolio-storage.js';
+import {localEodHistory} from './local-eod.js';
+import {mountDataEngine} from './data-engine-ui.js';
 import {ASSETS,KEY,STRATEGIES,validateTransaction,book,portfolio,portfolioXirr,project,parseBackup} from './finance.js';
 import {createApexDashboard} from './apex-ui.js';
 import {createResearchTools} from './research.js';
@@ -193,6 +195,10 @@ function navigate(view){
  else window.scrollTo({top:0,behavior:'instant'});
 }
 async function getJson(url){
+ if(url.startsWith('/api/history?')){
+  const query=new URL(url,location.origin).searchParams,symbol=query.get('symbol');
+  if(ASSETS[symbol]){const local=localEodHistory(localStorage,{market:query.get('market'),symbol,currency:ASSETS[symbol].currency,range:query.get('range')});if(local)return local;}
+ }
  const response=await fetch(url,{headers:{accept:'application/json'}});
  let data;try{data=await response.json();}catch{throw Error('Resposta JSON inválida');}
  if(!response.ok)throw Error(String(data.error||`HTTP ${response.status}`));return data;
@@ -321,3 +327,4 @@ function init(){
  overviewStrategyPreview();strategiesView();labBuilder=createLabBuilder({state,getJson});labBuilder.mount();simulationView();portfolioView();changeOperationUI();refresh();
 }
 init();
+mountDataEngine();

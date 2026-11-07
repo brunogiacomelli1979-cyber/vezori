@@ -1,0 +1,1 @@
+Real selected CVM/Tesouro rows: sources made available under ODbL 1.0, https://opendatacommons.org/licenses/odbl/1-0/. BCB data: https://www.bcb.gov.br/acessoinformacao/politicaprivacidade. Attribution and original hashes in sources.json. These are subsets for deterministic tests, not the original complete archives. No synthetic quotes.

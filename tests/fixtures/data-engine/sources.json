@@ -1,0 +1,74 @@
+{
+  "cvm-dfp-real.zip": {
+    "sourceUrl": "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/dfp_cia_aberta_2025.zip",
+    "originalArchiveSha256": "85f53d6aba99557ebb8a5f8b247c0610973230c1a0f97ab267da2216816a8ab6",
+    "note": "Selected root accounts for three existing verified issuers; both scopes and comparative rows retained.",
+    "fixtureSha256": "37dc19f3fc702ba73f4581cf9e2155b94b6964d97219f4dd0f3dd56913ea1149"
+  },
+  "funds-real.zip": {
+    "originalArchiveSha256": "20186b08066a789265ac0cc7bd901b7e91c343352b0f304775f298076e8797f1",
+    "note": "Real official rows; general registry contact fields excluded.",
+    "fixtureSha256": "54fdecfcd72ee10853ed41eb4ec60be9af1d9b0e793d2af795ffa49290dc9efb"
+  },
+  "fii-real.zip": {
+    "originalArchiveSha256": "eb9dfb6d05f3c71e74ec7e53ce8328b53e429712de23db939bc3c095788b646b",
+    "note": "Real official rows; general registry contact fields excluded.",
+    "fixtureSha256": "7e194338c5efa872d36deae6ac0097bfbfbe6f5b6b079c69ddbf7d5c9f7c3163"
+  },
+  "sgs-11.json": {
+    "bytes": 29398,
+    "etag": "W/\"72d6-FwPOGMze4C1NHw8rtOMqmAf7SnY\"",
+    "lastModified": null,
+    "license": "https://www.bcb.gov.br/acessoinformacao/politicaprivacidade",
+    "retrievedAt": "2026-11-07T21:25:36.741681+00:00",
+    "sha256": "d4dbff44c7b5c2b46591832d71dd30b30089f8a8498784d09d4ebd0209f4b4a7",
+    "url": "https://api.bcb.gov.br/dados/serie/bcdata.sgs.11/dados?formato=json&dataInicial=01%2F01%2F2024&dataFinal=07%2F11%2F2026",
+    "fixtureSha256": "dedd15ba4a840443f4e44aa174f0caa0f360da8e44b1c2d301335183fbdfa1b0"
+  },
+  "sgs-432.json": {
+    "bytes": 39597,
+    "etag": "W/\"9aad-LY+6e6Wl1EJNZ4GkBHq+3HP7IQ0\"",
+    "lastModified": null,
+    "license": "https://www.bcb.gov.br/acessoinformacao/politicaprivacidade",
+    "retrievedAt": "2026-11-07T21:25:34.213912+00:00",
+    "sha256": "04bfe5cf8ed986e434ea66bb8c420964f94a455c8788593c41f5723b182ec000",
+    "url": "https://api.bcb.gov.br/dados/serie/bcdata.sgs.432/dados?formato=json&dataInicial=01%2F01%2F2024&dataFinal=07%2F11%2F2026",
+    "fixtureSha256": "ae293901a6f80e05bc098799b1f9ad25b537fc82a88d447ebea8496667d5e4a4"
+  },
+  "sgs-12.json": {
+    "bytes": 29357,
+    "etag": "W/\"72ad-DCpe9cwpJhpfntRAKQc6buWOGI0\"",
+    "lastModified": null,
+    "license": "https://www.bcb.gov.br/acessoinformacao/politicaprivacidade",
+    "retrievedAt": "2026-11-07T21:25:36.931724+00:00",
+    "sha256": "e689611bb40f29519f83ea4223de7f32d78cad7f4c7d7956d1707b200e309bd7",
+    "url": "https://api.bcb.gov.br/dados/serie/bcdata.sgs.12/dados?formato=json&dataInicial=01%2F01%2F2024&dataFinal=07%2F11%2F2026",
+    "fixtureSha256": "7d3c9fdc8f3842a8ada78bcb5f1bdeeedd4438b4574784b745184064055daf9b"
+  },
+  "ptax-real.json": {
+    "bytes": 67143,
+    "etag": null,
+    "lastModified": null,
+    "license": "https://www.bcb.gov.br/acessoinformacao/politicaprivacidade",
+    "retrievedAt": "2026-11-07T21:25:37.540673+00:00",
+    "sha256": "4e1ffa217c0e8fe2cb70857347e271156d0a94b20958dcf0e7bc1384e59f99a6",
+    "url": "https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/CotacaoDolarPeriodo(dataInicial=@dataInicial,dataFinalCotacao=@dataFinalCotacao)?%40dataInicial=%2701-01-2024%27&%40dataFinalCotacao=%2711-07-2026%27&%24format=json&%24top=10000",
+    "fixtureSha256": "e3c74c7e90ef9a27bd24e3261f7fc8f38ec8939b4c82627b4fbd5e086132a3db"
+  },
+  "sgs-433.json": {
+    "bytes": 1225,
+    "etag": "W/\"4c9-4YelsJO+0Q1PlEJVEBAq4vPas0k\"",
+    "lastModified": null,
+    "license": "https://www.bcb.gov.br/acessoinformacao/politicaprivacidade",
+    "retrievedAt": "2026-11-07T21:25:37.251225+00:00",
+    "sha256": "e5c8bd8701c1b69e3dc5f38f627ac02ad9d8904451b4abed5d3e5db30a2f6e53",
+    "url": "https://api.bcb.gov.br/dados/serie/bcdata.sgs.433/dados?formato=json&dataInicial=01%2F01%2F2024&dataFinal=07%2F11%2F2026",
+    "fixtureSha256": "ebf274b928706886a494da664a26663ac66fcdfeb6d7a33e375d064cdb198568"
+  },
+  "companies-real.csv": {
+    "fixtureSha256": "9e8fda9792fce833b5340216ec4ca45e2788e4d40a221e3ad71c25dd5f161e2e"
+  },
+  "treasury-real.csv": {
+    "fixtureSha256": "2916d2f6cd1c5e27e571740ef86d03c634492405edf394ad083ab785666a1c6f"
+  }
+}

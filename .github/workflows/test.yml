@@ -1,7 +1,7 @@
 name: VEZORI — Validar código, matemática e interface
 on:
   push:
-    branches: [main, feat/vezori-4-audit-reliability]
+    branches: [main, feat/vezori-4-audit-reliability, feat/vezori-data-engine-1]
   pull_request:
     branches: [main]
 permissions:

@@ -298,6 +298,25 @@
         <section id="view-about" class="view">
           <div class="page-title"><div class="eyebrow">ENGENHARIA & TRANSPARÊNCIA</div><h1>Conexões de mercado</h1><p>O backend consulta os fornecedores, protege as chaves e identifica falhas em vez de criar números fictícios.</p></div>
           <div id="provider-grid" class="provider-grid"></div>
+          <section class="panel section-gap" aria-label="Bases oficiais e arquivos privados">
+            <h2>Data Engine — bases oficiais</h2>
+            <p class="micro-note">Contas, taxas, fundos e Tesouro com competência, revisão e origem. Cota contábil não é preço em bolsa. Nenhuma carteira pessoal é enviada a essas APIs.</p>
+            <form id="engine-query" class="form-grid"><label>Base<select id="engine-dataset"><option value="cvm">Companhias — CVM DFP / ITR</option><option value="macro">Macro — BCB / PTAX</option><option value="treasury">Tesouro Direto — taxas e PUs</option><option value="funds">Fundos — informe diário (piloto)</option><option value="fii">FIIs — informe mensal</option><option value="sec">EUA — SEC (identificação necessária)</option></select></label><label>Empresa, código CVM, CNPJ ou título<input id="engine-search" type="search" maxlength="80" /></label><button class="button primary" type="submit">Consultar base</button></form>
+            <p id="engine-status" class="micro-note" role="status">Consulte a base para verificar a cobertura publicada.</p>
+            <div id="engine-catalog" class="table-wrap" tabindex="0" role="region" aria-label="Catálogo das bases oficiais"></div><button id="engine-next" class="button" type="button" disabled>Próxima página</button>
+            <div id="engine-record" hidden>
+              <h3>Registros e revisões</h3><p id="engine-record-note" class="micro-note"></p>
+              <div class="form-grid"><label>Ano de referência<select id="engine-year"><option value="">Todos</option></select></label><label>Consolidação<select id="engine-scope"><option value="">Todas / não aplicável</option><option value="con">Consolidado</option><option value="ind">Individual</option></select></label><button id="engine-download" class="button" type="button">Baixar JSON completo com fontes</button></div>
+              <div id="engine-record-data" class="table-wrap" tabindex="0" role="region" aria-label="Registros oficiais com competência e revisão"></div>
+              <p id="engine-indicators" class="micro-note" style="white-space:pre-line"></p><p id="engine-license" class="micro-note"></p>
+            </div><p id="engine-blocked" class="micro-note"></p>
+            <details class="section-gap"><summary>Histórico EOD por arquivo privado</summary>
+              <p class="micro-note">Para arquivos obtidos legitimamente. Não há upload, licença pública ou substituição das cotações da carteira. CSV separado por vírgula, ponto decimal; colunas date,market,symbol,currency,close,adjustment. Ajustes aceitos: raw, split_adjusted, total_return, conforme declaração da fonte. A aplicação não reconcilia os eventos por você. Máximo 1 MiB / 10.000 linhas por CSV e quatro versões locais.</p>
+              <form id="local-eod-form" class="form-grid"><label>Origem legítima do arquivo<input id="local-eod-source" maxlength="80" required /></label><label>CSV privado<input id="local-eod-file" type="file" accept=".csv,text/csv" required /></label><label><input id="local-eod-rights" type="checkbox" required /> Obtive o arquivo legitimamente para uso local e entendo que isso não concede redistribuição pública.</label><button class="button primary" type="submit">Importar e usar para os ativos presentes</button></form>
+              <label>Arquivo ativo para análise local<select id="local-eod-version"><option value="">Fontes públicas</option></select></label>
+              <button id="local-eod-template" class="button" type="button">Baixar cabeçalho CSV</button><button id="local-eod-export" class="button" type="button">Exportar original local</button><label>Restaurar backup EOD local validado<input id="local-eod-restore" type="file" accept=".json,application/json" /></label><p id="local-eod-status" class="micro-note" role="status"></p>
+            </details>
+          </section>
           <section class="panel section-gap" aria-label="Diagnóstico do histórico persistente">
             <div class="panel-head"><div><span class="eyebrow">HISTÓRICO / ARMAZENAMENTO</span><h3>Integridade da coleta diária</h3></div><span class="lab-badge">CLOUDFLARE KV</span></div>
             <p id="storage-diagnostic-status" class="micro-note" role="status" aria-live="polite">Abra a aba Integrações para consultar o armazenamento.</p>

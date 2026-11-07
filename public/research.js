@@ -401,6 +401,7 @@ export function createResearchTools({state,navigate,getJson}){
  }
 
  function mount(){
+  window.addEventListener('vezori-local-eod-changed',()=>historyCache.clear());
   $('research-explore-search').addEventListener('input',event=>{search=event.target.value;renderExplorer();});
   $('research-explore-market').addEventListener('change',event=>{market=event.target.value;renderExplorer();});
   $('research-explore-sort').addEventListener('change',event=>{sort=event.target.value;renderExplorer();});
