@@ -11,6 +11,15 @@ import {fileURLToPath} from 'node:url';
 export const KV_BINDING='MARKET_SNAPSHOTS';
 export const KV_TITLE='vezori-MARKET_SNAPSHOTS';
 export const KNOWN_TITLES=new Set([KV_TITLE,'VEZORI_MARKET_SNAPSHOTS']);
+// Describe CLI failures using fixed categories only. Never echo stderr, API tokens,
+// account IDs or the full upstream command in a public Actions log.
+export function classifyKVFailure(error){
+ const detail=String(error?.stderr||error?.message||'');
+ if(/10000|9109|unauthorized|forbidden|permission|authentication|insufficient.*scope|HTTP 403|code: 403/i.test(detail))return 'authorization_or_scope';
+ if(/unknown command|command not found|not recognized|could not determine executable/i.test(detail))return 'wrangler_command';
+ if(/network|ENOTFOUND|ETIMEDOUT|ECONNRESET|fetch failed/i.test(detail))return 'network';
+ return 'unclassified';
+}
 
 export function namespaceIdFromList(raw){
  const data=JSON.parse(raw);
@@ -48,7 +57,7 @@ export function provisionKV({run=execFileSync,configPath='wrangler.jsonc'}={}){
  let id;
  try{id=namespaceIdFromList(wrangler('list'));}
  catch(error){
-  console.log('::warning::Unable to list KV namespaces. Deployment needs KV Storage Read or a valid binding in wrangler.jsonc.');
+  console.log('::warning::Unable to list KV namespaces ('+classifyKVFailure(error)+'). Check KV Storage Read permission, account scope and Wrangler availability.');
   return {status:'permission_or_access_missing'};
  }
  if(!id){
