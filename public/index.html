@@ -297,12 +297,17 @@
         <section id="view-about" class="view">
           <div class="page-title"><div class="eyebrow">ENGENHARIA & TRANSPARÊNCIA</div><h1>Conexões de mercado</h1><p>O backend consulta os fornecedores, protege as chaves e identifica falhas em vez de criar números fictícios.</p></div>
           <div id="provider-grid" class="provider-grid"></div>
+          <section class="panel section-gap" aria-label="Diagnóstico do histórico persistente">
+            <div class="panel-head"><div><span class="eyebrow">HISTÓRICO / ARMAZENAMENTO</span><h3>Integridade da coleta diária</h3></div><span class="lab-badge">CLOUDFLARE KV</span></div>
+            <p id="storage-diagnostic-status" class="micro-note" role="status" aria-live="polite">Abra a aba Integrações para consultar o armazenamento.</p>
+            <p class="micro-note">KV ativo comprova que o snapshot foi recuperado, não que todos os ativos possuem históricos completos ou fechamentos oficiais. Cotações de fim de semana podem refletir a última negociação disponível.</p>
+          </section>
           <details class="panel section-gap" id="integration-activation">
             <summary style="cursor:pointer;font-weight:700;color:#8fe8c8">Ativar cobertura completa — configurações pendentes</summary>
             <div class="integration-instructions" style="padding-top:14px">
               <p>Para desbloquear históricos de PETR3 e outros ativos brasileiros, crie uma chave gratuita na <a href="https://brapi.dev/" target="_blank" rel="noopener noreferrer">brapi</a> e configure <code>BRAPI_API_KEY</code> como Secret em Cloudflare → Workers & Pages → <strong>vezori</strong> → Settings → Variables and Secrets. Não compartilhe a chave por chat ou GitHub.</p>
               <p>Para os balanços de Microsoft, Apple e REITs, configure <code>SEC_USER_AGENT</code> no mesmo Worker com um contato verdadeiro da aplicação, respeitando as regras da SEC.</p>
-              <p>Para salvar snapshots diariamente, crie um namespace gratuito Workers KV e vincule-o como <code>MARKET_SNAPSHOTS</code>. O token de deploy atual não conseguiu listar namespaces KV. O site continua operando sem esse armazenamento.</p>
+              <p>Para salvar snapshots diariamente, é necessário um namespace Workers KV vinculado como <code>MARKET_SNAPSHOTS</code>. O workflow de publicação agora deve interromper novas implantações sem esse binding. A situação atual aparece no diagnóstico acima.</p>
               <p>Para publicar cotações dos EUA, contrate um plano com direitos de exibição pública. A chave básica da Twelve Data não autoriza automaticamente redistribuição de preços.</p>
               <p><a href="https://github.com/brunogiacomelli1979-cyber/vezori/issues/2" target="_blank" rel="noopener noreferrer">Acompanhar implantação e pendências no GitHub</a></p>
             </div>
