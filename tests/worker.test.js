@@ -276,3 +276,23 @@ test('diagnóstico de armazenamento diferencia KV ausente, vazio e ativo',async(
  assert.equal(body.status,'active');
  assert.equal(body.latestSnapshot.date,'2026-11-05');
 });
+
+test('rota paginada de observacoes aceita through no formato YYYY-MM',async()=>{
+ const map=new Map();
+ const store={
+  async get(k){return map.has(k)?JSON.parse(map.get(k)):null;},
+  async put(k,v){map.set(k,v);}
+ };
+ const response=await worker.fetch(new Request('https://vezori.example/api/observations?market=BR&symbol=PETR4&months=12&through=2026-10'),{MARKET_SNAPSHOTS:store},{});
+ assert.equal(response.status,200);
+ const d=await response.json();
+ assert.equal(d.status,'no_observations');
+ assert.equal(d.previousPageMonth,'2025-10');
+});
+test('rota paginada de observacoes rejeita through malformado e data futura',async()=>{
+ const env={MARKET_SNAPSHOTS:{async get(){return null;}}};
+ const malformed=await worker.fetch(new Request('https://vezori.example/api/observations?market=BR&symbol=PETR4&months=12&through=2026-1'),env,{});
+ assert.equal(malformed.status,400);
+ const future=await worker.fetch(new Request('https://vezori.example/api/observations?market=BR&symbol=PETR4&months=12&through=2099-01'),env,{});
+ assert.equal(future.status,400);
+});
