@@ -31,3 +31,32 @@ test('dados antigos são identificados com aviso de idade, sem mudar valor',asyn
  assert.equal(snapshot.meta.stale,true);
  assert.equal(snapshot.quotes[0].price,40);
 });
+
+test('recupera falha parcial no latest sem trocar cotação original',async()=>{
+ const storage=kv(),first=mockMarket();
+ let fail=true;
+ const fragile={
+  get:storage.get.bind(storage),
+  async put(key,value){
+   if(key===SNAPSHOT_PREFIX+'latest'&&fail){fail=false;throw Error('Falha transitória');}
+   return storage.put(key,value);
+  }
+ };
+ const at=new Date('2026-11-05T02:30:00Z');
+ await assert.rejects(()=>persistDailySnapshot(fragile,first,at),/transitória/);
+ assert.ok(storage.values.has(SNAPSHOT_PREFIX+'2026-11-05'));
+ const changed=mockMarket();changed.quotes[0].price=999;
+ const repaired=await persistDailySnapshot(fragile,changed,at);
+ assert.equal(repaired.status,'already_recorded');
+ const current=await latestDailySnapshot(storage,new Date('2026-11-05T08:30:00Z'));
+ assert.equal(current.quotes[0].price,40);
+});
+test('não escreve evento mais antigo por cima do snapshot latest',async()=>{
+ const storage=kv();
+ await persistDailySnapshot(storage,mockMarket(),new Date('2026-11-06T02:30:00Z'));
+ const older=await persistDailySnapshot(storage,mockMarket(),new Date('2026-11-05T02:30:00Z'));
+ assert.equal(older.status,'out_of_order');
+ assert.equal(storage.values.size,2);
+ const current=await latestDailySnapshot(storage,new Date('2026-11-07T02:30:00Z'));
+ assert.equal(current.meta.snapshotDate,'2026-11-06');
+});
