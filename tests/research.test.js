@@ -48,7 +48,7 @@ test('ficha exibe métricas de risco somente após histórico verificável',()=>
  const research=readFileSync(new URL('../public/research.js',import.meta.url),'utf8');
  assert.match(html,/id="research-risk-metrics"/);
  assert.match(html,/id="research-risk-status"/);
- assert.match(research,/analyzeAssetRisk\(series\)/);
+ assert.match(research,/analyzeAssetRisk\(\{\.\.\.series,\s*points:\s*series\.points\.slice\(-1000\)\}\)/);
  assert.match(html,/pelo menos 30 retornos diários/);
 });
 
