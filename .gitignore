@@ -9,6 +9,7 @@ node_modules/
 coverage/
 *.log
 *.zip
+!tests/fixtures/data-engine/*.zip
 
 __pycache__/
 .cache/
