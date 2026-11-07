@@ -45,5 +45,5 @@ test('cursor permite solicitar páginas históricas anteriores sem truncamento s
  const older=await readDailyObservations(s,{market:'CRYPTO',symbol:'BTC',months:24,asOf:new Date('2025-12-31')});
  assert.equal(older.points.length,1);
  assert.equal(older.points[0].date,'2025-02-14');
- assert.match(recent.previousPageMonth,/^\\d{4}-\\d{2}$/);
+ assert.match(recent.previousPageMonth,/^\d{4}-\d{2}$/);
 });
