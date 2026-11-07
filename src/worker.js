@@ -360,6 +360,13 @@ export default {
  },
  async scheduled(controller,env={},ctx={}){
   const result=await collectScheduledMarket(env,fetch,new Date(controller.scheduledTime||Date.now()));
-  console.log('VEZORI scheduled market capture: '+result.status);
+  console.log('VEZORI scheduled market capture:',JSON.stringify({
+   status:result.status,captureDate:result.captureDate||null,
+   archiveStatus:result.observations?.status||null,
+   assetsStored:result.observations?.stored??null,
+   assetsSkipped:result.observations?.skipped??null
+  }));
+  if(!['stored','already_recorded'].includes(result.status))throw Error('VEZORI scheduled snapshot did not persist: '+result.status);
+  if(result.observations?.status!=='archived')throw Error('VEZORI scheduled observations did not persist');
  }
 };
