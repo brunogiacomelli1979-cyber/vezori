@@ -79,3 +79,31 @@ test('CLI --required termina com erro quando não há credenciais',()=>{
  assert.equal(child.status,1);
  assert.match(child.stderr,/Deploy blocked/);
 });
+
+test('cria namespace quando não existe e usa o id retornado pelo Cloudflare',()=>{
+ const file=configFile();
+ try{
+  let calls=0;
+  withAuth(()=>{
+   const result=provisionKV({configPath:file.path,run:(_cmd,args)=>{
+    calls++;
+    if(args.at(-1)==='list')return '[]';
+    assert.deepEqual(args,['wrangler','kv','namespace','create','MARKET_SNAPSHOTS']);
+    return '✨ Success!\\n{ "id": "'+ID+'" }';
+   }});
+   assert.equal(result.status,'configured');
+  });
+  assert.equal(calls,2);
+  const updated=JSON.parse(readFileSync(file.path,'utf8'));
+  assert.equal(updated.kv_namespaces[0].id,ID);
+ }finally{file.cleanup();}
+});
+test('interrompe binding duplicado em configuração sem alterar arquivo',()=>{
+ const file=configFile();
+ try{
+  const duplicate={...CONFIG,kv_namespaces:[{binding:'MARKET_SNAPSHOTS',id:ID},{binding:'MARKET_SNAPSHOTS',id:'a'.repeat(32)}]};
+  writeFileSync(file.path,JSON.stringify(duplicate));
+  withAuth(()=>assert.throws(()=>provisionKV({configPath:file.path}),/Ambiguous/));
+  assert.deepEqual(JSON.parse(readFileSync(file.path,'utf8')),duplicate);
+ }finally{file.cleanup();}
+});
