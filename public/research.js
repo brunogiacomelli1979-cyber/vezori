@@ -401,6 +401,7 @@ export function createResearchTools({state,navigate,getJson}){
  }
 
  function mount(){
+  window.addEventListener('vezori-local-eod-changed',()=>historyCache.clear());
   $('research-explore-search').addEventListener('input',event=>{search=event.target.value;renderExplorer();});
   $('research-explore-market').addEventListener('change',event=>{market=event.target.value;renderExplorer();});
   $('research-explore-sort').addEventListener('change',event=>{sort=event.target.value;renderExplorer();});
@@ -429,11 +430,17 @@ export function createResearchTools({state,navigate,getJson}){
   selected=symbol;navigate('asset');
   return true;
  }
+ function registerLocalInstrument(meta){
+  if(!meta||!/^[A-Z0-9][A-Z0-9._-]{1,14}$/.test(meta.symbol)||!['BR','US','CRYPTO'].includes(meta.market)||!/^[A-Z]{3}$/.test(meta.currency))return false;
+  const existing=metaOf(meta.symbol);
+  if(existing)return existing.market===meta.market&&existing.currency===meta.currency;
+  catalog.set(meta.symbol,{meta:{...meta,localOnly:true},quote:null});registerCatalog([]);return true;
+ }
  function onNavigate(view){
   if(view==='market')renderExplorer();
   if(view==='asset'){renderDetail();renderFundamentals();}
   if(view==='compare'){renderSelected();renderComparison();}
  }
  function refresh(){renderExplorer();renderDetailHeader();}
- return {mount,refresh,onNavigate,selectAsset,addCompare,registerCatalog};
+ return {mount,refresh,onNavigate,selectAsset,addCompare,registerCatalog,registerLocalInstrument};
 }

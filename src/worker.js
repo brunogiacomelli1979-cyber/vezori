@@ -1,4 +1,5 @@
 import {publicDashboard,archiveDashboard} from './data-rights.js';
+import {dataEngineRoute} from './data-engine.js';
 import {verifyRecord} from './record-integrity.js';
 import {ASSETS} from '../public/asset-registry.js';
 import {withHistoryCoverage} from './history-contract.js';
@@ -255,6 +256,7 @@ export default {
   const url=new URL(request.url),path=url.pathname;
   if(!path.startsWith('/api/'))return env.ASSETS?.fetch?env.ASSETS.fetch(request):new Response('VEZORI: inicialize via Cloudflare Wrangler.',{status:404});
   if(request.method!=='GET')return fail('Método não permitido',405);
+  if(path.startsWith('/api/data-engine/'))return dataEngineRoute(request,env);
   if(path==='/api/assets')return respond({status:'identified_catalog',scope:'13 ativos locais identificados; catálogo remoto B3 é separado',items:Object.values(ASSETS)},200,3600);
   if(path==='/api/observations'){
    const market=String(url.searchParams.get('market')||'').toUpperCase(),

@@ -1,0 +1,2 @@
+# Official fixture subsets retain exact bytes/encoding and verified hashes on every OS.
+tests/fixtures/data-engine/** -text
