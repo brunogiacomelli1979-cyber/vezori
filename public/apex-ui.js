@@ -132,7 +132,7 @@ export function createApexDashboard({state,save,portfolioView,navigate}){
    const side=$('apex-trade-side').value;
    const tx={id:'tx_'+(globalThis.crypto?.randomUUID?.()||Date.now().toString(36)+Math.random().toString(36).slice(2)).replaceAll('-',''),date:$('apex-trade-date').value,symbol:$('apex-trade-symbol').value,side,qty:side==='income'?0:Number($('apex-trade-qty').value),unitPrice:Number($('apex-trade-price').value),fee:Number($('apex-trade-fee').value||0),fx:Number($('apex-trade-fx').value)};
    const validated=validateTransaction(tx,state.transactions);
-   state.transactions.push(validated);save();portfolioView();$('apex-trade-modal').close();
+   save([...state.transactions,validated]);portfolioView();$('apex-trade-modal').close();
   }catch(error){$('apex-trade-error').textContent=error.message;}
  }
  function mount(){

@@ -9,3 +9,15 @@ node_modules/
 coverage/
 *.log
 *.zip
+
+__pycache__/
+.cache/
+playwright-report/
+test-results/
+.agents/
+skills-lock.json
+
+public/vendor/
+
+out/
+build/

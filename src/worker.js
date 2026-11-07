@@ -1,3 +1,8 @@
+import {publicDashboard,archiveDashboard} from './data-rights.js';
+import {verifyRecord} from './record-integrity.js';
+import {ASSETS} from '../public/asset-registry.js';
+import {withHistoryCoverage} from './history-contract.js';
+import {normalizeHistoryPoints,validISODate} from './history-contract.js';
 /** VEZORI Market API | Cloudflare Workers | production-safe upstream validation. */
 import {SEC_COMPANIES,extractSECAnnualFacts} from './sec-fundamentals.js';
 import {persistDailySnapshot,latestDailySnapshot} from './daily-snapshot.js';
@@ -20,6 +25,7 @@ const headers={
   'content-type':'application/json; charset=utf-8',
   'x-content-type-options':'nosniff',
   'referrer-policy':'no-referrer',
+  'permissions-policy':'camera=(), microphone=(), geolocation=()',
   'x-frame-options':'DENY'
 };
 const numeric=v=>{if(v===null||v===undefined||v==='')return null;const n=Number(v);return Number.isFinite(n)?n:null;};
@@ -106,9 +112,13 @@ export async function currencyRate(base,quote,fetcher=fetch){
  return {pair:`${base}/${quote}`,rate,date:data.date||null,provider:'Frankfurter',frequency:'referência diária'};
 }
 export async function selic(fetcher=fetch){
- const data=await readJson('https://api.bcb.gov.br/dados/serie/bcdata.sgs.432/dados/ultimos/1?formato=json',{},fetcher);
+ const end=now().slice(0,10),start=new Date(Date.parse(end+'T00:00:00Z')-30*86400000).toISOString().slice(0,10);
+ const brDate=s=>s.split('-').reverse().join('/');
+ const data=await readJson('https://api.bcb.gov.br/dados/serie/bcdata.sgs.432/dados?formato=json&dataInicial='+brDate(start)+'&dataFinal='+brDate(end),{},fetcher);
  const last=Array.isArray(data)?data.at(-1):null,value=numeric(last?.valor);
  if(value===null)throw new Error('Meta Selic indisponível');
+ const date=String(last?.data||'').split('/').reverse().join('-');
+ if(!validISODate(date)||date>now().slice(0,10))throw Error('Data da meta Selic inválida ou futura');
  return {code:'SELIC_META',name:'Meta Selic',value,unit:'% a.a.',date:last.data||null,provider:'BCB / SGS 432'};
 }
 export async function cryptoQuotes(key,fetcher=fetch){
@@ -139,9 +149,12 @@ export async function historyQuote(market,symbol,range,env={},fetcher=fetch){
   const raw=await readJson(`https://brapi.dev/api/v2/stocks/historical?symbols=${symbol}&range=${range}&interval=1d`,brHeaders(env),fetcher);
   const data=raw.results?.[0]?.data,items=data?.historicalDataPrice;
   if(!Array.isArray(items)||!items.length)throw new Error('Série histórica indisponível no plano atual');
-  const points=items.map(p=>({date:typeof p.date==='number'?new Date(p.date*1000).toISOString().slice(0,10):String(p.date||'').slice(0,10),close:numeric(p.adjustedClose??p.close)})).filter(p=>/^\d{4}-\d{2}-\d{2}$/.test(p.date)&&positive(p.close)).sort((a,b)=>a.date.localeCompare(b.date));
+  const identity=raw.results?.[0]?.requestedSymbol||raw.results?.[0]?.symbol;
+  if(identity!==symbol)throw Error('Identidade do histórico diverge do ativo solicitado');
+  const adjusted=items.every(p=>positive(numeric(p.adjustedClose)));
+  const points=normalizeHistoryPoints(items.map(p=>({date:typeof p.date==='number'?new Date(p.date*1000).toISOString().slice(0,10):String(p.date||'').slice(0,10),close:numeric(adjusted?p.adjustedClose:p.close)})));
   if(!points.length)throw new Error('Série histórica vazia');
-  return {symbol,market,currency:'BRL',points,priceBasis:'fechamento ajustado quando disponível',provider:'brapi',range,interval:'1d',coverage:{requestedRange:range,actualFirst:points[0].date,actualLast:points.at(-1).date,completeSinceListing:false,reason:'Cobertura e janela efetiva dependem do fornecedor e do plano; API pode truncar pedidos longos'}};
+  return {symbol,market,currency:'BRL',points,priceBasis:adjusted?'fechamento ajustado informado pela fonte':'fechamento bruto; ajustes corporativos não confirmados',adjustment:adjusted?'provider_adjusted':'unadjusted',corporateActionsVerified:false,provider:'brapi',range,interval:'1d',coverage:{requestedRange:range,actualFirst:points[0].date,actualLast:points.at(-1).date,completeSinceListing:false,reason:'Cobertura e janela efetiva dependem do fornecedor e do plano; API pode truncar pedidos longos'}};
  }
  if(market==='US'){
   if(!env.TWELVEDATA_API_KEY)throw new Error('Histórico internacional exige chave Twelve Data');
@@ -150,7 +163,8 @@ export async function historyQuote(market,symbol,range,env={},fetcher=fetch){
   const url=new URL('https://api.twelvedata.com/time_series');
   url.searchParams.set('symbol',symbol);url.searchParams.set('interval','1day');url.searchParams.set('outputsize',String(days));url.searchParams.set('apikey',env.TWELVEDATA_API_KEY);
   const raw=await readJson(url.toString(),{},fetcher);
-  const points=(raw.values||[]).map(p=>({date:String(p.datetime||'').slice(0,10),close:numeric(p.close)})).filter(p=>/^\d{4}-\d{2}-\d{2}$/.test(p.date)&&positive(p.close)).sort((a,b)=>a.date.localeCompare(b.date));
+  if(raw.meta?.symbol&&raw.meta.symbol!==symbol)throw Error('Identidade do histórico internacional divergente');
+  const points=normalizeHistoryPoints((raw.values||[]).map(p=>({date:String(p.datetime||'').slice(0,10),close:numeric(p.close)})));
   if(!points.length)throw new Error('Série internacional indisponível no plano atual');
   return {symbol,market,currency:raw.meta?.currency||'USD',points,priceBasis:'fechamento sem ajuste garantido de proventos',provider:'Twelve Data',range,interval:'1d',coverage:{requestedRange:range,actualFirst:points[0].date,actualLast:points.at(-1).date,completeSinceListing:false,reason:'Exibição pública requer licença; profundidade depende da assinatura e do fornecedor'}};
  }
@@ -178,7 +192,7 @@ export async function historyQuote(market,symbol,range,env={},fetcher=fetch){
  throw new Error('Mercado não suportado');
 }
 export async function buildDashboard(env={},fetcher=fetch){
- const out={mode:'real_market_data',generatedAt:now(),quotes:[],fx:[],macro:[],availability:{brapi:env.BRAPI_API_KEY?'available':'sandbox_only',frankfurter:'available',bcb:'available',coingecko:env.COINGECKO_API_KEY?'available':'public_no_key',twelvedata:!env.TWELVEDATA_API_KEY?'key_required':env.US_PUBLIC_DISPLAY_AUTHORIZED==='true'?'available':'display_rights_required'},errors:[],meta:{simulatedPrices:false,refreshSeconds:dailySnapshotCacheSeconds(),refreshPolicy:'snapshot diário em cache por região; captura sob demanda, não arquivo EOD garantido',reference:'Últimos preços disponíveis nas fontes, com possíveis atrasos; não é uma cotação em tempo real'}};
+ const out={mode:'real_market_data',generatedAt:now(),quotes:[],fx:[],macro:[],availability:{brapi:env.BRAPI_API_KEY?'available':'sandbox_only',frankfurter:'available',bcb:'available',coingecko:env.COINGECKO_API_KEY?'available':'public_no_key',twelvedata:!env.TWELVEDATA_API_KEY?'key_required':env.US_PUBLIC_DISPLAY_AUTHORIZED==='true'?'available':'display_rights_required'},errors:[],meta:{simulatedPrices:false,refreshSeconds:dailySnapshotCacheSeconds(),refreshPolicy:'snapshot diário em cache por região; captura sob demanda, não fechamento oficial garantido',reference:'Últimos preços disponíveis nas fontes, com possíveis atrasos; não é uma cotação em tempo real'}};
  const tasks=[];
  const add=(source,kind,run)=>tasks.push({source,kind,run});
  add('brapi','quotes',()=>brazilQuotes(BR_SYMBOLS,env,fetcher));
@@ -217,19 +231,19 @@ async function cacheResult(request,ctx,key,ttl,runner){
 const fail=(message,status)=>respond({error:message,simulatedPrices:false},status);
 export async function collectScheduledMarket(env={},fetcher=fetch,time=new Date()){
  if(!env.MARKET_SNAPSHOTS)return {status:'storage_not_configured'};
- const dashboard=await buildDashboard(env,fetcher);
+ const dashboard=archiveDashboard(await buildDashboard(env,fetcher),env);
  const daily=await persistDailySnapshot(env.MARKET_SNAPSHOTS,dashboard,time);
  if(!['stored','already_recorded'].includes(daily.status))return daily;
  try{
   // Recovery: if snapshot persisted but archive failed earlier, retry using the
   // original captured snapshot, never a different quote obtained on rerun.
-  let archiveMarket=dashboard;
+  let archiveMarket=dashboard,archiveAt=time;
   if(daily.status==='already_recorded'){
    const saved=await env.MARKET_SNAPSHOTS.get('vezori:market:'+daily.captureDate,'json');
    if(!saved||saved.schemaVersion!==1||!saved.data)return {...daily,observations:{status:'snapshot_missing'}};
-   archiveMarket=saved.data;
+   archiveMarket=saved.data;archiveAt=new Date(saved.capturedAt);
   }
-  const archive=await appendDailyObservations(env.MARKET_SNAPSHOTS,archiveMarket,time);
+  const archive=await appendDailyObservations(env.MARKET_SNAPSHOTS,archiveMarket,archiveAt);
   return {...daily,observations:archive};
  }catch(err){
   // The main snapshot was persisted; do not incorrectly claim the archive also succeeded.
@@ -241,6 +255,7 @@ export default {
   const url=new URL(request.url),path=url.pathname;
   if(!path.startsWith('/api/'))return env.ASSETS?.fetch?env.ASSETS.fetch(request):new Response('VEZORI: inicialize via Cloudflare Wrangler.',{status:404});
   if(request.method!=='GET')return fail('Método não permitido',405);
+  if(path==='/api/assets')return respond({status:'identified_catalog',scope:'13 ativos locais identificados; catálogo remoto B3 é separado',items:Object.values(ASSETS)},200,3600);
   if(path==='/api/observations'){
    const market=String(url.searchParams.get('market')||'').toUpperCase(),
     symbol=String(url.searchParams.get('symbol')||'').toUpperCase(),
@@ -250,6 +265,7 @@ export default {
    try{
     const asOf=through?new Date(Date.UTC(Number(through.slice(0,4)),Number(through.slice(5,7)),0,23,59,59)):new Date();
     if(!Number.isFinite(asOf.getTime())||asOf>new Date()||asOf.getUTCFullYear()<2000)return fail('Período inválido',400);
+    if(market==='BR'&&env.BR_PUBLIC_DISPLAY_AUTHORIZED!=='true')return fail('Arquivo B3: exibição pública exige autorização documentada da brapi',422);
     return respond(await readDailyObservations(env.MARKET_SNAPSHOTS,{market,symbol,months,asOf}),200,900);
    }catch(err){return fail(errorMessage(err),422);}
   }
@@ -271,14 +287,15 @@ export default {
    try{
     const latest=await env.MARKET_SNAPSHOTS.get('vezori:market:latest','json');
     const snapshot=latest?.schemaVersion===1&&latest?.captureDate&&latest?.data?.meta?.simulatedPrices===false?latest:null;
+    if(snapshot)await verifyRecord(snapshot);
     const sample=await readDailyObservations(env.MARKET_SNAPSHOTS,{market:'BR',symbol:'PETR4',months:1});
     return respond({status:snapshot?'active':'configured_empty',persistent:true,
-     latestSnapshot:snapshot?{date:snapshot.captureDate,capturedAt:snapshot.capturedAt,pricedQuotes:snapshot.data.quotes?.length||0}:null,
+     latestSnapshot:snapshot?{date:snapshot.captureDate,capturedAt:snapshot.capturedAt,pricedQuotes:snapshot.data.quotes?.length||0,macroObservations:snapshot.data.macro?.length||0,captureKind:snapshot.data.meta?.captureKind||null,integrity:snapshot.integrity?.algorithm||'legacy_unsigned'}:null,
      archiveSample:{asset:'PETR4',status:sample.status,observations:sample.points.length,latestDate:sample.coverage?.actualLast||null},
      note:'A ligação KV existe, mas ausência de snapshot ou observações não comprova captura automática operacional.'},200,300);
    }catch(err){return respond({status:'storage_error',persistent:false,latestSnapshot:null,archiveSample:null,reason:errorMessage(err)},503);}
   }
-  if(path==='/api/health')return respond({service:'VEZORI',status:'ok',timestamp:now(),sourcesConfigured:{brapi:!!env.BRAPI_API_KEY,coingecko:!!env.COINGECKO_API_KEY,twelvedata:!!env.TWELVEDATA_API_KEY,usPublicDisplayAuthorized:env.US_PUBLIC_DISPLAY_AUTHORIZED==='true',secIdentified:!!env.SEC_USER_AGENT,marketSnapshotStorage:!!env.MARKET_SNAPSHOTS}});
+  if(path==='/api/health')return respond({service:'VEZORI',status:'ok',version:'4.0.0',release:env.RELEASE_SHA||null,timestamp:now(),sourcesConfigured:{brapi:!!env.BRAPI_API_KEY,brPublicDisplayAuthorized:env.BR_PUBLIC_DISPLAY_AUTHORIZED==='true',coingecko:!!env.COINGECKO_API_KEY,twelvedata:!!env.TWELVEDATA_API_KEY,usPublicDisplayAuthorized:env.US_PUBLIC_DISPLAY_AUTHORIZED==='true',secIdentified:!!env.SEC_USER_AGENT,marketSnapshotStorage:!!env.MARKET_SNAPSHOTS}});
 
   if(path==='/api/fundamentals'){
    const market=String(url.searchParams.get('market')||'').toUpperCase();
@@ -312,6 +329,7 @@ export default {
   }
 
   if(path==='/api/catalog'){
+   if(env.BR_PUBLIC_DISPLAY_AUTHORIZED!=='true')return fail('Catálogo B3: exibição pública exige autorização documentada da brapi',422);
    const search=url.searchParams.get('search')||'',page=Number(url.searchParams.get('page')||1),limit=Number(url.searchParams.get('limit')||50);
    if(search.length>60||!/^[\p{L}\p{N} ._-]*$/u.test(search)||!Number.isInteger(page)||page<1||page>200||!Number.isInteger(limit)||limit<1||limit>60)return fail('Parâmetros de catálogo inválidos',400);
    const key='/api/catalog?page='+page+'&limit='+limit+'&search='+encodeURIComponent(search);
@@ -325,11 +343,11 @@ export default {
    if(env.MARKET_SNAPSHOTS){
     try{
      const snapshot=await latestDailySnapshot(env.MARKET_SNAPSHOTS);
-     if(snapshot)return respond(snapshot,200,900);
+     if(snapshot?.quotes.length)return respond(publicDashboard(snapshot,env),200,900);
     }catch(err){console.warn('VEZORI snapshot KV: '+errorMessage(err));}
    }
-   return cacheResult(request,ctx,'/api/dashboard?version=5',dailySnapshotCacheSeconds(),async()=>{
-    const data=await buildDashboard(env);
+   return cacheResult(request,ctx,'/api/dashboard?version=6',dailySnapshotCacheSeconds(),async()=>{
+    const data=publicDashboard(await buildDashboard(env),env);
     data.meta.refreshSeconds=data.errors.length?1800:dailySnapshotCacheSeconds();
     return respond(data,200,data.meta.refreshSeconds);
    });
@@ -341,7 +359,7 @@ export default {
    return cacheResult(request,ctx,`/api/quote?market=${market}&symbol=${symbol}`,ttl,async()=>{
     try{
      let q;
-     if(market==='BR')q=await brazilQuote(symbol,env);
+     if(market==='BR'){if(env.BR_PUBLIC_DISPLAY_AUTHORIZED!=='true')throw Error('Exibição pública B3 exige autorização documentada da brapi');q=await brazilQuote(symbol,env);}
      else if(market==='US'){if(env.US_PUBLIC_DISPLAY_AUTHORIZED!=='true')throw Error('Exibição pública de dados americanos requer licença específica');q=await usQuote(symbol,env.TWELVEDATA_API_KEY);}
      else {if(!Object.hasOwn(CRYPTO_BY_SYMBOL,symbol))throw new Error('Criptomoeda indisponível');q=(await cryptoQuotes(env.COINGECKO_API_KEY)).find(row=>row.symbol===symbol);}
      if(!q)throw new Error('Cotação não disponível');return respond({quote:q},200,ttl);
@@ -353,7 +371,7 @@ export default {
    if(!['BR','US','CRYPTO'].includes(market)||!(/^[A-Z0-9.]{1,8}$/.test(symbol))||!['1mo','3mo','6mo','1y','2y','5y','10y','max'].includes(range))return fail('Parâmetros inválidos',400);
    const ttl=Math.min(TTL_HISTORY,dailySnapshotCacheSeconds());
    return cacheResult(request,ctx,`/api/history?market=${market}&symbol=${symbol}&range=${range}`,ttl,async()=>{
-    try{if(market==='US'&&env.US_PUBLIC_DISPLAY_AUTHORIZED!=='true')throw Error('Exibição pública do histórico americano requer licença');return respond(await historyQuote(market,symbol,range,env),200,ttl);}catch(err){return fail(errorMessage(err),422);}
+    try{if(market==='BR'&&env.BR_PUBLIC_DISPLAY_AUTHORIZED!=='true')throw Error('Histórico B3: exibição pública exige autorização documentada da brapi');if(market==='US'&&env.US_PUBLIC_DISPLAY_AUTHORIZED!=='true')throw Error('Exibição pública do histórico americano requer licença');return respond(withHistoryCoverage(await historyQuote(market,symbol,range,env)),200,ttl);}catch(err){return fail(errorMessage(err),422);}
    });
   }
   return fail('Rota não encontrada',404);

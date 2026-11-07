@@ -1,3 +1,4 @@
+import {validDate} from './finance.js';
 /**
  * VEZORI Market Charts — pure price preparation and optional TradingView adapter.
  * Never invent dates, interpolate points, or substitute unknown prices.
@@ -9,7 +10,8 @@ export function marketChartSeries(labels,datasets){
   const points=new Map();
   labels.forEach((date,i)=>{
    const value=ds.values[i];
-   if(/^\d{4}-\d{2}-\d{2}$/.test(String(date))&&typeof value==='number'&&Number.isFinite(value)&&value>0){
+   if(validDate(String(date))&&typeof value==='number'&&Number.isFinite(value)&&value>0){
+    if(points.has(String(date))&&points.get(String(date)).value!==value)throw Error('Fechamentos conflitantes no gráfico');
     points.set(String(date),{time:String(date),value});
    }
   });

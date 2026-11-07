@@ -1,3 +1,4 @@
+import {analyzeExtendedRisk} from './risk-metrics.js';
 /** VEZORI 2.0 — exploration, issuer/asset detail, and comparisons.
  * Data contracts are explicit: absent financial fundamentals are never inferred.
  * Charts reflect provider price closes; not total returns and not normalized across currencies.
@@ -278,6 +279,10 @@ export function createResearchTools({state,navigate,getJson}){
      '<div><span>Volatilidade anualizada</span><strong>'+esc(pct(risk.volatilityAnnualPct))+'</strong><small>'+(risk.volatilityAnnualPct===null?'Mínimo: 30 retornos válidos':'Estimativa de retornos diários; '+risk.observationSessionsPerYear+' sessões/ano')+'</small></div>'+
      '<div><span>Retorno de preço</span><strong class="'+delta(risk.returnPct)+'">'+esc(pct(risk.returnPct))+'</strong><small>Não inclui dividendos ou câmbio</small></div>'+
      '<div><span>Observações</span><strong>'+risk.observations+'</strong><small>'+esc(risk.firstDate+' a '+risk.lastDate)+'</small></div>';
+    const extended=analyzeExtendedRisk({...series,points:series.points.slice(-1000)});
+    $('research-risk-metrics').innerHTML+=
+     '<div><span>VaR histórico diário (95%)</span><strong>'+esc(pct(extended.historicalVaR95DailyPct))+'</strong><small>Mínimo: 100 retornos de preço</small></div>'+
+     '<div><span>CVaR histórico diário (95%)</span><strong>'+esc(pct(extended.historicalCVaR95DailyPct))+'</strong><small>Média das perdas na cauda observada</small></div>';
     $('research-risk-status').textContent=risk.provider+' · '+risk.priceBasis+' · histórico de preços, não retorno total. Sharpe exige taxa livre de risco explícita, mesma moeda e amostra mínima; por isso não foi estimado automaticamente.';
    }catch(error){
     $('research-risk-metrics').innerHTML='';

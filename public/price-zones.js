@@ -1,3 +1,4 @@
+import {validDate} from './finance.js';
 /** VEZORI — faixas históricas indicativas, não ordens de negociação.
  * Usa apenas fechamentos reais; não extrapola níveis sem amostra mínima.
  */
@@ -8,7 +9,7 @@ export function suggestPriceZones(series){
  if(!/^[A-Z]{3}$/.test(series.currency||''))throw Error('Moeda da série inválida');
  const dated=new Map();
  for(const p of series.points){
-  if(!p||!/^\d{4}-\d{2}-\d{2}$/.test(p.date)||!finite(p.close))throw Error('Histórico contém datas ou preços inválidos');
+  if(!p||!validDate(p.date)||!finite(p.close))throw Error('Histórico contém datas ou preços inválidos');
   if(dated.has(p.date)&&dated.get(p.date)!==p.close)throw Error('Fechamentos conflitantes na mesma data');
   dated.set(p.date,p.close);
  }
@@ -16,7 +17,7 @@ export function suggestPriceZones(series){
  if(pts.length<50)throw Error('Exige pelo menos 50 fechamentos válidos para níveis indicativos');
  for(let i=1;i<pts.length;i++){
   const days=(Date.parse(pts[i][0]+'T00:00:00Z')-Date.parse(pts[i-1][0]+'T00:00:00Z'))/86400000;
-  if(days<1||(series.market==='CRYPTO'?days>3:days>8))throw Error('Histórico possui lacunas incompatíveis com análise diária');
+  if(days<1||(series.market==='CRYPTO'?days!==1:days>8))throw Error('Histórico possui lacunas incompatíveis com análise diária');
  }
  const values=pts.map(x=>x[1]),last=values.at(-1);
  const returns=values.slice(1).map((x,i)=>Math.log(x/values[i]));

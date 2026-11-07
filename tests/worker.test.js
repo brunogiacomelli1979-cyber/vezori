@@ -90,7 +90,7 @@ test('rota api/quote valida input e não expõe mensagens de upstream',async()=>
 test('rota dashboard executa serviço real sem depender da interface',async()=>{
  const original=globalThis.fetch;globalThis.fetch=fakeFetch;
  try{
-  const res=await worker.fetch(new Request('https://vezori.workers.dev/api/dashboard'),{},{});
+  const res=await worker.fetch(new Request('https://vezori.workers.dev/api/dashboard'),{BR_PUBLIC_DISPLAY_AUTHORIZED:'true'},{});
   assert.equal(res.status,200);const body=await res.json();
   assert.equal(body.mode,'real_market_data');assert.equal(body.quotes.length,7);
   assert.equal(body.quotes.find(x=>x.symbol==='PETR4').price,40.25);
@@ -99,7 +99,7 @@ test('rota dashboard executa serviço real sem depender da interface',async()=>{
 test('rota history retorna série validada e sem preços inventados',async()=>{
  const original=globalThis.fetch;globalThis.fetch=fakeFetch;
  try{
-  const res=await worker.fetch(new Request('https://vezori.workers.dev/api/history?market=BR&symbol=PETR4&range=1mo'),{},{});
+  const res=await worker.fetch(new Request('https://vezori.workers.dev/api/history?market=BR&symbol=PETR4&range=1mo'),{BR_PUBLIC_DISPLAY_AUTHORIZED:'true'},{});
   assert.equal(res.status,200);const body=await res.json();
   assert.equal(body.provider,'brapi');assert.equal(body.points.length,2);
   assert.equal(body.points[0].close,25.5);
@@ -175,13 +175,13 @@ test('captura cron grava snapshot uma vez por dia somente com KV configurado',as
  const values=new Map();
  const store={async get(k){return values.has(k)?JSON.parse(values.get(k)):null;},async put(k,v){values.set(k,v);}};
  const day=new Date('2026-11-05T02:30:00Z');
- const first=await collectScheduledMarket({MARKET_SNAPSHOTS:store},fakeFetch,day);
+ const first=await collectScheduledMarket({MARKET_SNAPSHOTS:store,BR_ARCHIVE_AUTHORIZED:'true',CRYPTO_ARCHIVE_AUTHORIZED:'true',BR_PUBLIC_DISPLAY_AUTHORIZED:'true'},fakeFetch,day);
  assert.equal(first.status,'stored');
  assert.equal(first.priced,7);
  assert.equal(first.observations.status,'archived');
  assert.equal(first.observations.stored,7);
  assert.equal(values.size,9); // dois snapshots + sete arquivos mensais por ativo
- assert.equal((await collectScheduledMarket({MARKET_SNAPSHOTS:store},fakeFetch,day)).status,'already_recorded');
+ assert.equal((await collectScheduledMarket({MARKET_SNAPSHOTS:store,BR_ARCHIVE_AUTHORIZED:'true',CRYPTO_ARCHIVE_AUTHORIZED:'true',BR_PUBLIC_DISPLAY_AUTHORIZED:'true'},fakeFetch,day)).status,'already_recorded');
  assert.equal(values.size,9);
  assert.equal((await collectScheduledMarket({},fakeFetch,day)).status,'storage_not_configured');
 });
@@ -245,19 +245,19 @@ test('reexecutar coleta repara observações perdidas sem trocar a cotação ori
   }
  };
  const day=new Date('2026-11-05T02:30:00Z');
- const first=await collectScheduledMarket({MARKET_SNAPSHOTS:store},fakeFetch,day);
+ const first=await collectScheduledMarket({MARKET_SNAPSHOTS:store,BR_ARCHIVE_AUTHORIZED:'true',CRYPTO_ARCHIVE_AUTHORIZED:'true',BR_PUBLIC_DISPLAY_AUTHORIZED:'true'},fakeFetch,day);
  assert.equal(first.status,'stored');
  assert.equal(first.observations.status,'archive_failed');
  assert.equal(raw.has('vezori:market:2026-11-05'),true);
- const next=await collectScheduledMarket({MARKET_SNAPSHOTS:store},fakeFetch,day);
+ const next=await collectScheduledMarket({MARKET_SNAPSHOTS:store,BR_ARCHIVE_AUTHORIZED:'true',CRYPTO_ARCHIVE_AUTHORIZED:'true',BR_PUBLIC_DISPLAY_AUTHORIZED:'true'},fakeFetch,day);
  assert.equal(next.status,'already_recorded');
  assert.equal(next.observations.status,'archived');
  assert.equal(next.observations.stored,7);
 });
 test('observações exige parâmetros válidos e não inventa dados sem KV',async()=>{
- const invalid=await worker.fetch(new Request('https://vezori.example/api/observations?market=BR&symbol=PETR4&months=999'),{},{});
+ const invalid=await worker.fetch(new Request('https://vezori.example/api/observations?market=BR&symbol=PETR4&months=999'),{BR_PUBLIC_DISPLAY_AUTHORIZED:'true'},{});
  assert.equal(invalid.status,400);
- const ok=await worker.fetch(new Request('https://vezori.example/api/observations?market=BR&symbol=PETR4&months=12'),{},{});
+ const ok=await worker.fetch(new Request('https://vezori.example/api/observations?market=BR&symbol=PETR4&months=12'),{BR_PUBLIC_DISPLAY_AUTHORIZED:'true'},{});
  assert.equal(ok.status,200);
  assert.equal((await ok.json()).status,'storage_not_configured');
 });
@@ -267,10 +267,10 @@ test('diagnóstico de armazenamento diferencia KV ausente, vazio e ativo',async(
  assert.equal(none.status,200);
  assert.equal((await none.json()).status,'not_configured');
  const map=new Map(),store={async get(k){return map.has(k)?JSON.parse(map.get(k)):null;},async put(k,v){map.set(k,v)}};
- const empty=await worker.fetch(new Request('https://vezori.example/api/storage-status'),{MARKET_SNAPSHOTS:store},{});
+ const empty=await worker.fetch(new Request('https://vezori.example/api/storage-status'),{MARKET_SNAPSHOTS:store,BR_ARCHIVE_AUTHORIZED:'true',CRYPTO_ARCHIVE_AUTHORIZED:'true',BR_PUBLIC_DISPLAY_AUTHORIZED:'true'},{});
  assert.equal((await empty.json()).status,'configured_empty');
- await collectScheduledMarket({MARKET_SNAPSHOTS:store},fakeFetch,new Date('2026-11-05T02:30:00Z'));
- const active=await worker.fetch(new Request('https://vezori.example/api/storage-status'),{MARKET_SNAPSHOTS:store},{});
+ await collectScheduledMarket({MARKET_SNAPSHOTS:store,BR_ARCHIVE_AUTHORIZED:'true',CRYPTO_ARCHIVE_AUTHORIZED:'true',BR_PUBLIC_DISPLAY_AUTHORIZED:'true'},fakeFetch,new Date('2026-11-05T02:30:00Z'));
+ const active=await worker.fetch(new Request('https://vezori.example/api/storage-status'),{MARKET_SNAPSHOTS:store,BR_ARCHIVE_AUTHORIZED:'true',CRYPTO_ARCHIVE_AUTHORIZED:'true',BR_PUBLIC_DISPLAY_AUTHORIZED:'true'},{});
  assert.equal(active.status,200);
  const body=await active.json();
  assert.equal(body.status,'active');
@@ -283,7 +283,7 @@ test('rota paginada de observacoes aceita through no formato YYYY-MM',async()=>{
   async get(k){return map.has(k)?JSON.parse(map.get(k)):null;},
   async put(k,v){map.set(k,v);}
  };
- const response=await worker.fetch(new Request('https://vezori.example/api/observations?market=BR&symbol=PETR4&months=12&through=2026-10'),{MARKET_SNAPSHOTS:store},{});
+ const response=await worker.fetch(new Request('https://vezori.example/api/observations?market=BR&symbol=PETR4&months=12&through=2026-10'),{MARKET_SNAPSHOTS:store,BR_ARCHIVE_AUTHORIZED:'true',CRYPTO_ARCHIVE_AUTHORIZED:'true',BR_PUBLIC_DISPLAY_AUTHORIZED:'true'},{});
  assert.equal(response.status,200);
  const d=await response.json();
  assert.equal(d.status,'no_observations');

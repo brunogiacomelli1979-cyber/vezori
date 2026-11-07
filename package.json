@@ -1,19 +1,28 @@
 {
   "name": "vezori",
   "private": true,
-  "version": "1.0.0",
+  "version": "4.0.0",
   "type": "module",
-  "description": "VEZORI: inteligência de investimentos com dados de mercado reais e carteira de operações auditáveis",
+  "description": "VEZORI: intelig\u00c3\u00aancia de investimentos com dados de mercado reais e carteira de opera\u00c3\u00a7\u00c3\u00b5es audit\u00c3\u00a1veis",
   "scripts": {
     "dev": "wrangler dev --local",
-    "deploy": "wrangler deploy",
+    "deploy": "npm run check && npm run build && node scripts/provision_kv.mjs --required && wrangler deploy",
     "test": "node --test tests/*.test.js",
-    "check": "node --check src/worker.js && node --check src/daily-snapshot.js && node --check src/daily-observations.js && node --check scripts/provision_kv.mjs && node --check public/price-zones.js && node --check public/app.js && node --check public/finance.js && node --check public/lab.js && node --check public/research.js && node --check public/risk-analytics.js && node --check public/portfolio-risk.js && npm test"
+    "check": "node scripts/check-syntax.mjs && npm test",
+    "build": "node scripts/prepare-assets.mjs",
+    "predev": "npm run build",
+    "test:ui": "playwright test"
   },
   "devDependencies": {
-    "wrangler": "^4.0.0"
+    "@axe-core/playwright": "4.14.0",
+    "@playwright/test": "1.65.0",
+    "wrangler": "4.158.0"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22.20.0"
+  },
+  "dependencies": {
+    "chart.js": "4.4.8",
+    "lightweight-charts": "5.2.1"
   }
 }

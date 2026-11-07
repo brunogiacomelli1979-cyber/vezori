@@ -26,6 +26,6 @@ test('monta séries na API TradingView v5 e libera recursos',()=>{
 test('ficha e comparador conservam transparência sobre autoria do gráfico',()=>{
  const h=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
  assert.match(h,/research-asset-lightweight/);assert.match(h,/research-compare-lightweight/);
- assert.match(h,/lightweight-charts@5\.2\.1/);assert.match(h,/tradingview\.com/);
+ assert.match(h,/\/vendor\/lightweight-charts\.js/);assert.equal(JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8')).dependencies['lightweight-charts'],'5.2.1');assert.match(h,/tradingview\.com/);
  assert.match(h,/Valores provenientes das APIs indicadas/);
 });

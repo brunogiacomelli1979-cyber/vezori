@@ -1,27 +1,42 @@
-name: Testes do motor financeiro e das APIs
+name: VEZORI — Validar código, matemática e interface
 on:
   push:
-    branches: [main]
+    branches: [main, feat/vezori-4-audit-reliability]
   pull_request:
     branches: [main]
+permissions:
+  contents: read
 jobs:
-  test:
+  validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
-          node-version: '22'
-          package-manager-cache: false
-      - name: Verificar sintaxe
-        run: |
-          node --check src/worker.js
-          node --check public/finance.js
-          node --check public/app.js
-      - name: Executar testes (sem credenciais)
-        run: node --test tests/*.test.js
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-fund --no-audit
+      - name: Validação estática, testes unitários e contratos de integração
+        run: npm run check
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-      - name: Validar extratores e publicador CVM
-        run: python -m unittest discover -s tests -p 'test_*cvm*.py'
+      - name: Extratores e reconciliação financeira independente
+        run: python -m unittest discover -s tests -p 'test_*.py'
+      - name: Build dos assets locais e dry-run do Worker
+        run: |
+          npm run build
+          npx wrangler deploy --dry-run --outdir build
+      - name: Instalar navegador oficial de teste
+        run: npx playwright install --with-deps chromium
+      - name: Fluxos de interface e acessibilidade nas quatro resoluções
+        run: npm run test:ui
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: vezori-validation-evidence
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
