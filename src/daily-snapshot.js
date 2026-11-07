@@ -11,8 +11,17 @@ export async function persistDailySnapshot(store,market,capturedAt=new Date()){
  const moment=new Date(capturedAt),ms=moment.getTime();
  if(!Number.isFinite(ms))throw Error('Data de coleta inválida');
  const day=moment.toISOString().slice(0,10);
- const existing=await store.get(SNAPSHOT_PREFIX+'latest','json');
- if(existing?.captureDate>=day)return {status:'already_recorded',captureDate:existing.captureDate};
+ const latest=await store.get(SNAPSHOT_PREFIX+'latest','json');
+ if(latest?.captureDate>day)return {status:'out_of_order',captureDate:day,latestCaptureDate:latest.captureDate};
+ const saved=await store.get(SNAPSHOT_PREFIX+day,'json');
+ if(saved){
+  if(saved.schemaVersion!==1||saved.captureDate!==day||!validateMarketSnapshot(saved.data))throw Error('Snapshot diario previamente gravado e invalido; nao sobrescrever');
+  // Recover a partial put (day succeeded, latest failed) without ever replacing
+  // the original observations with today's possibly different provider prices.
+  if(!latest||latest.captureDate<day)await store.put(SNAPSHOT_PREFIX+'latest',JSON.stringify(saved));
+  return {status:'already_recorded',captureDate:day};
+ }
+ if(latest?.captureDate===day)throw Error('Indice latest sem snapshot diario correspondente');
  const item={
   schemaVersion:1,
   captureDate:day,
