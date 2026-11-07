@@ -4,7 +4,6 @@
  * publishing a Worker without archival storage.
  * Only the VEZORI Worker config is mutated in the ephemeral CI workspace.
  */
-import {execFileSync} from 'node:child_process';
 import {readFileSync,writeFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 
@@ -39,42 +38,54 @@ export function applyKVBinding(config,id){
  return {...config,kv_namespaces:[...others,{binding:KV_BINDING,id}]};
 }
 
-export function provisionKV({run=execFileSync,configPath='wrangler.jsonc'}={}){
- if(!process.env.CLOUDFLARE_API_TOKEN||!process.env.CLOUDFLARE_ACCOUNT_ID){
-  return {status:'no_cloudflare_auth'};
- }
+/** REST avoids parsing human-oriented Wrangler output and enumerates every page. */
+export async function provisionKV({fetcher=fetch,configPath='wrangler.jsonc',env=process.env}={}){
+ if(!env.CLOUDFLARE_API_TOKEN||!env.CLOUDFLARE_ACCOUNT_ID)return {status:'no_cloudflare_auth'};
  const config=JSON.parse(readFileSync(configPath,'utf8'));
  if(config.name!=='vezori'||config.main!=='src/worker.js')throw Error('This provisioning is restricted to the VEZORI Worker');
- const existing=(config.kv_namespaces||[]).filter(x=>x.binding===KV_BINDING);
- if(existing.length>1)throw Error('Ambiguous KV binding: multiple MARKET_SNAPSHOTS entries');
- if(existing.length===1){
-  if(!/^[a-f0-9]{32}$/.test(String(existing[0].id||'')))throw Error('KV binding exists with an invalid namespace ID');
-  return {status:'configured',binding:KV_BINDING,source:'config'};
+ const bindings=(config.kv_namespaces||[]).filter(x=>x.binding===KV_BINDING);
+ if(bindings.length>1)throw Error('Ambiguous KV binding: multiple MARKET_SNAPSHOTS entries');
+ if(bindings.length&& !/^[a-f0-9]{32}$/.test(String(bindings[0].id||'')))throw Error('KV binding exists with an invalid namespace ID');
+ const root='https://api.cloudflare.com/client/v4/accounts/'+encodeURIComponent(env.CLOUDFLARE_ACCOUNT_ID)+'/storage/kv/namespaces';
+ async function request(url,method='GET',body){
+  const response=await fetcher(url,{method,headers:{authorization:'Bearer '+env.CLOUDFLARE_API_TOKEN,'content-type':'application/json'},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(20000)});
+  let data;try{data=await response.json();}catch{throw Error('cloudflare_invalid_json');}
+  if(!response.ok||data.success!==true){
+   const category=[401,403].includes(response.status)?'authorization_or_scope':response.status===429?'rate_limited':'cloudflare_api_failure';
+   // Only numeric status/code are logged. Never print provider messages or credentials.
+   const codes=(data.errors||[]).map(x=>Number(x.code)).filter(Number.isFinite).join(',');
+   throw Error(category+' HTTP '+response.status+' codes '+codes);
+  }
+  return data;
  }
- function wrangler(...args){
-  return run('npx',['wrangler','kv','namespace',...args],{encoding:'utf8',timeout:45000,stdio:['ignore','pipe','pipe']});
+ const namespaces=[];
+ for(let page=1;page<=100;page++){
+  const data=await request(root+'?per_page=100&page='+page);
+  if(!Array.isArray(data.result))throw Error('Unexpected Cloudflare KV namespace list response');
+  namespaces.push(...data.result);
+  if(page>=(data.result_info?.total_pages||1))break;
+  if(page===100)throw Error('Namespace pagination exceeds safe bound');
  }
  let id;
- try{id=namespaceIdFromList(wrangler('list'));}
- catch(error){
-  console.log('::warning::Unable to list KV namespaces ('+classifyKVFailure(error)+'). Check KV Storage Read permission, account scope and Wrangler availability.');
-  return {status:'permission_or_access_missing'};
- }
- if(!id){
-  try{id=namespaceIdFromCreate(wrangler('create',KV_BINDING));}
-  catch(error){
-   console.log('::warning::Cannot create KV namespace. Grant Workers KV Storage Write or bind an existing namespace.');
-   return {status:'permission_or_access_missing'};
+ if(bindings.length){
+  const match=namespaces.find(x=>x.id===bindings[0].id&&KNOWN_TITLES.has(x.title));
+  if(!match)throw Error('Configured namespace not verified as VEZORI-owned');
+  id=match.id;
+ }else{
+  id=namespaceIdFromList(JSON.stringify(namespaces));
+  if(!id){
+   const created=await request(root,'POST',{title:KV_TITLE});
+   id=created.result?.id;
+   if(!/^[a-f0-9]{32}$/.test(String(id||'')))throw Error('Cannot reliably identify newly created KV namespace');
   }
  }
- const updated=applyKVBinding(config,id);
- writeFileSync(configPath,JSON.stringify(updated,null,2)+'\n','utf8');
- return {status:'configured',binding:KV_BINDING,namespaceId:id};
+ writeFileSync(configPath,JSON.stringify(applyKVBinding(config,id),null,2)+'\n','utf8');
+ return {status:'configured',binding:KV_BINDING,source:bindings.length?'config':'api'};
 }
 if(process.argv[1]&&fileURLToPath(import.meta.url)===process.argv[1]){
  const required=process.argv.includes('--required');
  try{
-  const result=provisionKV();
+  const result=await provisionKV();
   console.log('VEZORI KV:',result.status,result.status==='configured'?result.binding:'');
   if(required&&result.status!=='configured'){
    console.error('::error::VEZORI deploy blocked: MARKET_SNAPSHOTS is not configured. Check Cloudflare KV permissions or bind a namespace.');
