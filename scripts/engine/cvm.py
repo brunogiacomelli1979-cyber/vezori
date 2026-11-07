@@ -22,7 +22,7 @@ def extract(path,source,kind,year):
         general=f'{kind.lower()}_cia_aberta_{year}.csv'
         filings={}
         for row in zip_rows(path,general,{'CNPJ_CIA','DT_REFER','VERSAO','DT_RECEB','ID_DOC'}):
-            filings[(cnpj(row['CNPJ_CIA']),iso(row['DT_REFER']),int(row['VERSAO']))]={'publishedAt':row['DT_RECEB'] or None,'documentId':row['ID_DOC'],'documentUrl':row.get('LINK_DOC') or None}
+            filings[(cnpj(row['CNPJ_CIA']),iso(row['DT_REFER']),int(row['VERSAO']))]={'publishedAt':iso(row['DT_RECEB']) if row['DT_RECEB'] else None,'documentId':row['ID_DOC'],'documentUrl':row.get('LINK_DOC') or None}
         for scope in ['con','ind']:
             for name in archive.namelist():
                 statement=file_key(name,kind,year,scope)
@@ -74,7 +74,8 @@ def indicators(document):
                 old=[r for r in rows if r['values']['statement']=='BPP' and r['values']['accountCode']=='2.03' and r['values']['periodEnd']<key[2]]
                 prior=max(old,key=lambda r:r['values']['periodEnd']) if old else None
                 days=(__import__('datetime').date.fromisoformat(key[2])-__import__('datetime').date.fromisoformat(start)).days if start else 0
-                metrics['roePct']=income['values']['valueBRL']/((equity['values']['valueBRL']+prior['values']['valueBRL'])/2)*100 if income and equity and prior and days>=330 and equity['values']['valueBRL']>0 and prior['values']['valueBRL']>0 else None
+                equity_days=(__import__('datetime').date.fromisoformat(key[2])-__import__('datetime').date.fromisoformat(prior['values']['periodEnd'])).days if prior else 0
+                metrics['roePct']=income['values']['valueBRL']/((equity['values']['valueBRL']+prior['values']['valueBRL'])/2)*100 if income and equity and prior and 330<=days<=380 and 330<=equity_days<=380 and equity['values']['valueBRL']>0 and prior['values']['valueBRL']>0 else None
             result.append({'kind':key[0],'scope':key[1],'periodEnd':key[2],'periodStart':start,'filingVersion':key[3],'status':'sector_specific_required' if financial else 'sector_unknown' if not sector else 'accounting_ratios','metrics':metrics,'inputs':{r['values']['statement']+':'+r['values']['accountCode']:r['key'] for r in current if r['values']['statement']!='DRE' or r['values']['periodStart']==start},'method':'Ratios of BRL accounts in the same filing version/scope/duration; ROE only with annual income and comparative equity in that filing. Liabilities/assets is not financial debt/EBITDA. No price multiples.'})
     return result
 

@@ -99,6 +99,7 @@ body .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overf
 body .home-search-field{position:relative;flex-direction:row;margin:0}
 body .research-chart [hidden]{display:none!important}
 body #local-eod-rights{width:18px;min-height:18px;align-self:flex-start}
+body #local-eod-status,body #engine-record-note,body #engine-license,body #engine-blocked{overflow-wrap:anywhere}
 
 /* Show verified official data on the opening screen without conflating accounting with prices. */
 body .home-engine-spotlight{padding:18px 20px;margin:18px 0 22px;border:1px solid var(--v4-stroke)}

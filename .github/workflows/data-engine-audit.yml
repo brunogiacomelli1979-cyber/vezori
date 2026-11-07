@@ -2,6 +2,15 @@ name: VEZORI — Verificar ingestão oficial Data Engine
 on:
   push:
     branches: [feat/vezori-data-engine-1]
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/engine/**'
+      - 'scripts/data_engine.py'
+      - 'scripts/cvm_extract.py'
+      - 'tests/test_data_engine.py'
+      - 'tests/fixtures/data-engine/**'
+      - '.github/workflows/data-engine-audit.yml'
   workflow_dispatch:
 permissions:
   contents: read
