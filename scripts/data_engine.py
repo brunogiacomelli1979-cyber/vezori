@@ -3,13 +3,13 @@ import argparse, json, os
 from datetime import date, timedelta
 from pathlib import Path
 from scripts.engine.core import Bundle, Fetcher, canonical, previous_bundle
-from scripts.engine import cvm, funds, macro, treasury, sec
+from scripts.engine import cvm, funds, macro, treasury, sec, legacy
 from scripts.cvm_extract import source_url
 
 SCHEDULES={'15 22 * * 1-6':'macro,treasury','15 12 * * 1-6':'funds,fii','37 12 * * 3':'cvm','15 1 * * 2-6':'sec','30 23 * * 1-5':'prices'}
 def main():
     p=argparse.ArgumentParser(description=__doc__)
-    p.add_argument('--groups',default='all');p.add_argument('--schedule',default='');p.add_argument('--years',nargs='+',type=int,default=[2024,2025]);p.add_argument('--itr-year',type=int,default=date.today().year)
+    p.add_argument('--groups',default='all');p.add_argument('--schedule',default='');p.add_argument('--years',nargs='+',type=int,default=[date.today().year-2,date.today().year-1]);p.add_argument('--itr-year',type=int,default=date.today().year)
     p.add_argument('--out-dir',type=Path,default=Path('public/data/engine'));p.add_argument('--seed-dir',type=Path);p.add_argument('--offline',action='store_true');p.add_argument('--no-recovery',action='store_true')
     a=p.parse_args();groups=(SCHEDULES.get(a.schedule,a.groups)).split(',')
     if groups==['all']:groups=['cvm','macro','funds','fii','treasury','sec','prices']
@@ -36,5 +36,6 @@ def main():
     if 'sec' in groups:sec.ingest(fetcher,bundle,os.environ.get('SEC_USER_AGENT'))
     bundle.manifest['blocked']['prices']={'status':'rights_required','markets':['BR equities/FII/ETF/BDR','US stocks/ETF/REIT','CRYPTO permanent EOD archive'],'reason':'No free public-display and permanent-retention agreement verified. Existing licensed live-query adapters remain separate. Local CSV import is private and grants no redistribution rights.','brazilScheduleUTC':'30 23 * * 1-5','brazilScheduleLocal':'20:30 America/Sao_Paulo; actual provider closing timestamp must match before accepting a close','cryptoReference':'UTC date; existing daily observations are not automatically official exchange closes'}
     summary=bundle.publish(a.out_dir,run_id=os.environ.get('GITHUB_RUN_ID','local'),event=os.environ.get('GITHUB_EVENT_NAME','controlled'),groups=groups,receipts=fetcher.receipts)
+    if 'cvm' in bundle.manifest.get('catalog',{}):legacy.publish(bundle)
     print(json.dumps({'engineVersion':summary['engineVersion'],'datasets':{k:v['status'] for k,v in summary['datasets'].items()},'storage':summary['storage'],'blocked':list(summary['blocked'])},ensure_ascii=True))
 if __name__=='__main__':main()

@@ -1,5 +1,5 @@
 import {createPortfolioStorage} from './portfolio-storage.js';
-import {localEodHistory} from './local-eod.js';
+import {localEodHistory,localEodInstruments} from './local-eod.js';
 import {mountDataEngine} from './data-engine-ui.js';
 import {ASSETS,KEY,STRATEGIES,validateTransaction,book,portfolio,portfolioXirr,project,parseBackup} from './finance.js';
 import {createApexDashboard} from './apex-ui.js';
@@ -197,7 +197,8 @@ function navigate(view){
 async function getJson(url){
  if(url.startsWith('/api/history?')){
   const query=new URL(url,location.origin).searchParams,symbol=query.get('symbol');
-  if(ASSETS[symbol]){const local=localEodHistory(localStorage,{market:query.get('market'),symbol,currency:ASSETS[symbol].currency,range:query.get('range')});if(local)return local;}
+  const meta=ASSETS[symbol]||localEodInstruments(localStorage).find(x=>x.symbol===symbol&&x.market===query.get('market'));
+  if(meta){const local=localEodHistory(localStorage,{market:query.get('market'),symbol,currency:meta.currency,range:query.get('range')});if(local)return local;}
  }
  const response=await fetch(url,{headers:{accept:'application/json'}});
  let data;try{data=await response.json();}catch{throw Error('Resposta JSON inválida');}
@@ -292,6 +293,9 @@ function init(){
  state.transactions=restore();$('tx-date').value=new Date().toLocaleDateString('en-CA');
  apexUI=createApexDashboard({state,save,portfolioView,navigate});apexUI.mount();
  researchTools=createResearchTools({state,navigate,getJson});researchTools.mount();
+ const registerPrivate=()=>{try{for(const meta of localEodInstruments(localStorage))researchTools.registerLocalInstrument(meta);}catch{/* The import panel reports damaged local files without replacing them. */}};
+ registerPrivate();window.addEventListener('vezori-local-eod-changed',registerPrivate);
+ window.addEventListener('vezori-open-local-eod',event=>{const meta=event.detail;if(researchTools.registerLocalInstrument(meta))researchTools.selectAsset(meta.symbol);else $('local-eod-status').textContent='Identidade local diverge do mercado/moeda já cadastrados; não foi substituída.';});
  marketHome=createMarketHome({state,navigate,selectAsset:symbol=>researchTools.selectAsset(symbol),getJson,registerCatalog:rows=>researchTools.registerCatalog(rows)});marketHome.mount();
  document.querySelectorAll('[data-view]').forEach(x=>x.addEventListener('click',()=>navigate(x.dataset.view)));
  document.querySelectorAll('[data-go]').forEach(x=>x.addEventListener('click',()=>navigate(x.dataset.go)));
@@ -301,7 +305,7 @@ function init(){
   event.preventDefault();
   const query=$('global-search').value.trim();
   const ticker=query.toUpperCase();
-  if(ASSETS[ticker]){researchTools.selectAsset(ticker);return;}
+  if(researchTools.selectAsset(ticker))return;
   marketHome?.setSearch(query);
   navigate('overview');
  });

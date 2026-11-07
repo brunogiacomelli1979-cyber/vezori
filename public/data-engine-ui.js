@@ -1,8 +1,9 @@
 /** A small data browser inside Integrations, preserving the v4 layout. */
-import {importLocalEod,loadLocalEod,saveLocalEod,LOCAL_EOD_KEY} from './local-eod.js';
+import {importLocalEod,loadLocalEod,saveLocalEod,localEodInstruments,LOCAL_EOD_KEY} from './local-eod.js';
 const $=id=>document.getElementById(id);
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt=x=>typeof x==='number'?new Intl.NumberFormat('pt-BR',{maximumFractionDigits:8}).format(x):x??'—';
+const metricNames={currentRatio:'Liquidez corrente',netMarginPct:'Margem líquida %',grossMarginPct:'Margem bruta %',liabilitiesToAssetsPct:'Passivo exigível / ativo %',roePct:'ROE anual com PL médio %'};
 function download(text,name,type='application/json'){const a=document.createElement('a'),url=URL.createObjectURL(new Blob([text],{type}));a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 async function get(path){const response=await fetch(path);const data=await response.json();if(!response.ok)throw Error(data.error||'Fonte indisponível');return data;}
 const definitions={
@@ -22,7 +23,7 @@ export function mountDataEngine(){
   $('engine-record-note').textContent=`${current.name} · ${current.id} · ${current.provider||''} · ${current.unit||current.currency||''}. ${current.priceBasis||''}. ${rows.length} registros no recorte; mostrando até 50. Revisões e linhas originais selecionadas estão no JSON completo.`;
   $('engine-record-data').innerHTML='<table><thead><tr>'+fields.map(([,name])=>'<th scope="col">'+esc(name)+'</th>').join('')+'<th scope="col">Correção observada</th></tr></thead><tbody>'+rows.slice(0,50).map(r=>'<tr>'+fields.map(([key])=>'<td>'+esc(fmt(r.values[key]))+'</td>').join('')+'<td>'+esc(r.revisionOrdinal||1)+'</td></tr>').join('')+'</tbody></table>';
   const indicators=(current.indicators||[]).filter(x=>(!year||x.periodEnd.startsWith(year))&&(!scope||x.scope===scope));
-  $('engine-indicators').textContent=indicators.length?indicators.slice(-6).map(x=>x.kind+' '+x.periodStart+' → '+x.periodEnd+' '+x.scope+' rev.'+x.filingVersion+': '+(x.status==='sector_specific_required'?'tratamento setorial necessário; sem índices industriais.':Object.entries(x.metrics).map(([k,v])=>k+' = '+fmt(v)).join(' · '))).join('\n'):'';
+  $('engine-indicators').textContent=indicators.length?indicators.slice(-6).map(x=>x.kind+' '+x.periodStart+' → '+x.periodEnd+' '+x.scope+' rev.'+x.filingVersion+': '+(x.status!=='accounting_ratios'?'tratamento setorial necessário ou setor desconhecido; sem índices industriais.':Object.entries(x.metrics).map(([k,v])=>(metricNames[k]||k)+' = '+fmt(v)).join(' · '))).join('\n'):'';
   $('engine-license').textContent='Origem: '+(current.provider||'')+' · licença/política: '+(current.license||'não informada')+'. Não confundir cota contábil ou PU de referência com preço executável. '+(current.coverageNote||current.methodology||'');
  }
  async function query(reset=true){
@@ -42,8 +43,9 @@ export function mountDataEngine(){
  $('engine-catalog').addEventListener('click',async event=>{
   const id=event.target.closest('[data-engine-id]')?.dataset.engineId;if(!id)return;
   try{
-   current=await get('/api/data-engine/record?dataset='+$('engine-dataset').value+'&id='+encodeURIComponent(id));
-   if(!current.integrity?.verified||!Array.isArray(current.observations))throw Error('Registro sem integridade confirmada.');
+   const document=await get('/api/data-engine/record?dataset='+$('engine-dataset').value+'&id='+encodeURIComponent(id));
+   if(!document.integrity?.verified||!Array.isArray(document.observations))throw Error('Registro sem integridade confirmada.');
+   current=document;
    const years=[...new Set(current.observations.map(r=>(r.values.date||r.values.periodEnd||'').slice(0,4)))].sort().reverse();
    $('engine-year').innerHTML='<option value="">Todos</option>'+years.map(y=>'<option>'+esc(y)+'</option>').join('');
    $('engine-scope').value=current.dataset==='cvm'?'con':'';$('engine-scope').disabled=current.dataset!=='cvm';
@@ -53,7 +55,7 @@ export function mountDataEngine(){
  $('engine-year').addEventListener('change',renderDocument);$('engine-scope').addEventListener('change',renderDocument);
  $('engine-download').addEventListener('click',()=>{if(current)download(JSON.stringify(current,null,2),'vezori-'+current.dataset+'-'+current.id+'.json');});
  function localStatus(){
-  try{const data=loadLocalEod(localStorage);$('local-eod-version').innerHTML='<option value="">Usar fontes públicas; preservar arquivos locais</option>'+data.files.map(f=>'<option value="'+f.fileSha256+'">'+esc(f.sourceName+' · '+f.rows.length+' registros · '+f.fileSha256.slice(0,10))+'</option>').join('');$('local-eod-version').value=data.activeHash||'';}
+  try{const data=loadLocalEod(localStorage);$('local-eod-version').innerHTML='<option value="">Usar fontes públicas; preservar arquivos locais</option>'+data.files.map(f=>'<option value="'+f.fileSha256+'">'+esc(f.sourceName+' · '+f.rows.length+' registros · '+f.fileSha256.slice(0,10))+'</option>').join('');$('local-eod-version').value=data.activeHash||'';const instruments=localEodInstruments(localStorage);$('local-eod-instrument').innerHTML=instruments.map((x,i)=>'<option value="'+i+'">'+esc(x.market+':'+x.symbol+' · '+x.currency)+'</option>').join('');$('local-eod-open').disabled=!instruments.length;}
   catch(error){$('local-eod-status').textContent=error.message;}
  }
  $('local-eod-form').addEventListener('submit',async event=>{
@@ -67,6 +69,7 @@ export function mountDataEngine(){
  });
  $('local-eod-version').addEventListener('change',()=>{try{const data=loadLocalEod(localStorage);data.activeHash=$('local-eod-version').value||null;saveLocalEod(localStorage,data);window.dispatchEvent(new CustomEvent('vezori-local-eod-changed'));$('local-eod-status').textContent='Seleção local atualizada; arquivos anteriores preservados.';}catch(error){$('local-eod-status').textContent=error.message;}});
  $('local-eod-template').addEventListener('click',()=>download('date,market,symbol,currency,close,adjustment\r\n','vezori-eod-modelo.csv','text/csv'));
+ $('local-eod-open').addEventListener('click',()=>{try{const meta=localEodInstruments(localStorage)[Number($('local-eod-instrument').value)];if(meta)window.dispatchEvent(new CustomEvent('vezori-open-local-eod',{detail:meta}));}catch(error){$('local-eod-status').textContent=error.message;}});
  $('local-eod-export').addEventListener('click',()=>download(localStorage.getItem(LOCAL_EOD_KEY)||'','vezori-eod-local-original.json'));
  $('local-eod-restore').addEventListener('change',async event=>{try{const file=event.target.files[0];if(!file||file.size>5*1024*1024)throw Error('Backup ausente ou maior que 5 MiB.');const data=JSON.parse(await file.text());saveLocalEod(localStorage,data);localStatus();window.dispatchEvent(new CustomEvent('vezori-local-eod-changed'));$('local-eod-status').textContent='Backup local validado e restaurado; bytes anteriores preservados na cópia de recuperação.';}catch(error){$('local-eod-status').textContent=error.message;}});
  localStatus();

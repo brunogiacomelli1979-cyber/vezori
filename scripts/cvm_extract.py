@@ -7,7 +7,7 @@ Source: https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/{DFP|ITR}/DADOS/
 from __future__ import annotations
 import argparse
 import csv
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from decimal import Decimal, InvalidOperation
 from hashlib import sha256
 from io import TextIOWrapper
@@ -20,7 +20,7 @@ from zipfile import ZipFile
 KINDS = {"DFP", "ITR"}
 STATEMENTS = {"DRE", "BPA", "BPP", "DFC_MI", "DFC_MD"}
 SCOPE = {"con", "ind"}
-REQ_FIELDS = {"CNPJ_CIA", "DT_REFER", "VERSAO", "CD_CONTA", "DS_CONTA", "VL_CONTA", "ESCALA_MOEDA", "ORDEM_EXERC"}
+REQ_FIELDS = {"CNPJ_CIA", "DT_REFER", "VERSAO", "CD_CONTA", "DS_CONTA", "VL_CONTA", "ESCALA_MOEDA", "MOEDA", "ORDEM_EXERC"}
 MAX_ZIP = 75 * 1024 * 1024
 
 
@@ -98,7 +98,12 @@ def rows_in_zip(path: Path, *, kind: str, year: int, cnpj: str, scope: str = "co
                     if not current.strip().startswith(("ÚLTIMO", "ULTIMO")):
                         continue
                     version = int(item["VERSAO"])
+                    reference=date.fromisoformat(item['DT_REFER'])
+                    if reference.isoformat()!=item['DT_REFER'] or reference>datetime.now(timezone.utc).date() or version<1:
+                        raise ValueError('Competência ou revisão CVM inválida')
                     unit, scale = normalize_scale(item.get("ESCALA_MOEDA", ""))
+                    if item.get('MOEDA','').strip().upper() not in {'REAL','REAIS','BRL'}:
+                        unit,scale=None,None
                     value = decimal_pt(item["VL_CONTA"])
                     found.append({
                         "statement": statement,
@@ -110,6 +115,7 @@ def rows_in_zip(path: Path, *, kind: str, year: int, cnpj: str, scope: str = "co
                         "accountLabel": item["DS_CONTA"].strip(),
                         "originalValue": str(value),
                         "sourceScale": item.get("ESCALA_MOEDA", ""),
+                        "sourceCurrency":item['MOEDA'],
                         "unit": unit,
                         "value": str(value * scale) if scale is not None else None,
                     })

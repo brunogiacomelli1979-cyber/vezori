@@ -51,7 +51,8 @@ def indicators(document):
         if v['currency']!='BRL' or v['valueBRL'] is None:continue
         key=(v['kind'],v['scope'],v['referenceDate'],v['filingVersion'])
         groups.setdefault(key,[]).append(row)
-    financial=any(s in document.get('sector','').lower() for s in ['banco','intermedia','segur','previd','crédito'])
+    sector=document.get('sector','').strip()
+    financial=any(s in sector.lower() for s in ['banco','intermedia','segur','previd','crédito','securitiz','arrendamento'])
     result=[]
     for key,rows in sorted(groups.items()):
         current=[r for r in rows if r['values']['periodEnd']==key[2]]
@@ -65,7 +66,7 @@ def indicators(document):
             assets=fact('BPA','1');ca=fact('BPA','1.01');cl=fact('BPP','2.01');nc=fact('BPP','2.02');equity=fact('BPP','2.03')
             def ratio(a,b):return a['values']['valueBRL']/b['values']['valueBRL'] if a and b and b['values']['valueBRL']>0 else None
             metrics={}
-            if not financial:
+            if sector and not financial:
                 metrics['currentRatio']=ratio(ca,cl)
                 metrics['netMarginPct']=None if ratio(income,revenue) is None else ratio(income,revenue)*100
                 metrics['grossMarginPct']=None if ratio(gross,revenue) is None else ratio(gross,revenue)*100
@@ -74,7 +75,7 @@ def indicators(document):
                 prior=max(old,key=lambda r:r['values']['periodEnd']) if old else None
                 days=(__import__('datetime').date.fromisoformat(key[2])-__import__('datetime').date.fromisoformat(start)).days if start else 0
                 metrics['roePct']=income['values']['valueBRL']/((equity['values']['valueBRL']+prior['values']['valueBRL'])/2)*100 if income and equity and prior and days>=330 and equity['values']['valueBRL']>0 and prior['values']['valueBRL']>0 else None
-            result.append({'kind':key[0],'scope':key[1],'periodEnd':key[2],'periodStart':start,'filingVersion':key[3],'status':'sector_specific_required' if financial else 'accounting_ratios','metrics':metrics,'inputs':{r['values']['statement']+':'+r['values']['accountCode']:r['key'] for r in current if r['values']['statement']!='DRE' or r['values']['periodStart']==start},'method':'Ratios of BRL accounts in the same filing version/scope/duration; ROE only with annual income and comparative equity in that filing. Liabilities/assets is not financial debt/EBITDA. No price multiples.'})
+            result.append({'kind':key[0],'scope':key[1],'periodEnd':key[2],'periodStart':start,'filingVersion':key[3],'status':'sector_specific_required' if financial else 'sector_unknown' if not sector else 'accounting_ratios','metrics':metrics,'inputs':{r['values']['statement']+':'+r['values']['accountCode']:r['key'] for r in current if r['values']['statement']!='DRE' or r['values']['periodStart']==start},'method':'Ratios of BRL accounts in the same filing version/scope/duration; ROE only with annual income and comparative equity in that filing. Liabilities/assets is not financial debt/EBITDA. No price multiples.'})
     return result
 
 def ingest(fetcher,bundle, *, years=(2024,2025),itr_year=2026):

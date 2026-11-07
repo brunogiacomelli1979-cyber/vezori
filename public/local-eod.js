@@ -25,7 +25,7 @@ export function parseLocalEod(text,{sourceName,asOf=new Date().toISOString().sli
   if(line.length!==header.length)throw Error('Quantidade de colunas inconsistente.');
   const raw=Object.fromEntries(header.map((k,i)=>[k,line[i].trim()]));
   const date=raw.date,market=raw.market.toUpperCase(),symbol=raw.symbol.toUpperCase(),currency=raw.currency.toUpperCase(),adjustment=raw.adjustment;
-  if(!validDate(date)||date>asOf||!['BR','US','CRYPTO'].includes(market)||!/^[A-Z0-9][A-Z0-9._-]{1,14}$/.test(symbol)||!/^[A-Z]{3}$/.test(currency)||!['raw','split_adjusted','total_return'].includes(adjustment))throw Error('Data, identidade, moeda ou ajuste inválido.');
+  if(!validDate(date)||date>asOf||!['BR','US','CRYPTO'].includes(market)||!/^[A-Z0-9][A-Z0-9._-]{1,14}$/.test(symbol)||!/^[A-Z]{3}$/.test(currency)||!['raw','split_adjusted'].includes(adjustment))throw Error('Data, identidade, moeda ou ajuste inválido. Use raw ou split_adjusted; índices de retorno total não são preços EOD.');
   if(!/^(?:\d+\.?\d*|\.\d+)$/.test(raw.close)||!Number.isFinite(Number(raw.close))||Number(raw.close)<=0)throw Error('Fechamento deve ser positivo, com ponto decimal e sem separador de milhar.');
   const instrument=market+':'+symbol;
   if(bases.has(instrument)&&bases.get(instrument)!==currency+':'+adjustment)throw Error('Não misture moedas ou ajustes do mesmo ativo.');
@@ -54,6 +54,12 @@ export function saveLocalEod(storage,data){
  const prior=storage.getItem(LOCAL_EOD_KEY);
  if(prior!==null)storage.setItem(LOCAL_EOD_KEY+'-recovery',prior);
  storage.setItem(LOCAL_EOD_KEY,serialized);
+}
+export function localEodInstruments(storage){
+ const data=loadLocalEod(storage),file=data.files.find(f=>f.fileSha256===data.activeHash);
+ if(!file)return [];
+ const result=new Map();for(const row of file.rows)result.set(row.market+':'+row.symbol,{symbol:row.symbol,market:row.market,currency:row.currency,name:row.symbol+' · identidade declarada em arquivo privado'});
+ return [...result.values()];
 }
 export async function importLocalEod(storage,text,sourceName){
  const file=parseLocalEod(text,{sourceName}),fileSha256=[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text)))].map(x=>x.toString(16).padStart(2,'0')).join('');

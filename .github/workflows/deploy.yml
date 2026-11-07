@@ -4,8 +4,18 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      data_groups:
+        description: Ciclo de dados; bootstrap inicial inclui todas as bases oficiais
+        type: choice
+        default: all
+        options: [all, cvm, macro, funds, fii, treasury, sec]
   schedule:
     - cron: '37 12 * * 3'  # Quarta-feira UTC: CVM atualiza arquivos semanalmente
+    - cron: '15 22 * * 1-6'  # Macro e Tesouro, 19:15 Brasília
+    - cron: '15 12 * * 1-6'  # Fundos/FIIs após disponibilização dos informes
+    - cron: '15 1 * * 2-6'   # SEC, quando houver identidade válida
+    - cron: '30 23 * * 1-5'  # 20:30 Brasília: só registrar bloqueio enquanto faltam direitos EOD
 
 permissions:
   contents: read
@@ -16,9 +26,15 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  test-and-deploy:
+  price-rights-gate:
+    if: ${{ github.event.schedule == '30 23 * * 1-5' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    steps:
+      - run: echo "::notice::EOD bloqueado por direitos de exibição/retencao nao comprovados. Nenhum fornecedor foi consultado, preco criado ou flag habilitada."
+  test-and-deploy:
+    if: ${{ github.event.schedule != '30 23 * * 1-5' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
     env:
       CF_TOKEN_CONFIGURED: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
       CF_ACCOUNT_CONFIGURED: ${{ secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
@@ -45,8 +61,12 @@ jobs:
         run: python -m unittest discover -s tests -p 'test_*.py'
       - name: Preparar bibliotecas locais com versões fixadas
         run: npm run build
-      - name: Construir demonstrativos CVM 2025 a partir da fonte oficial
-        run: python -m scripts.publish_cvm_fundamentals --year 2025 --out-dir public/data/fundamentals
+      - name: Ingerir ciclo oficial e preservar o lote anterior
+        env:
+          ENGINE_GROUPS: ${{ inputs.data_groups || 'all' }}
+          ENGINE_SCHEDULE: ${{ github.event.schedule }}
+          SEC_USER_AGENT: ${{ vars.SEC_DATA_ENABLED == 'true' && secrets.SEC_USER_AGENT || '' }}
+        run: python -m scripts.data_engine --groups "$ENGINE_GROUPS" --schedule "$ENGINE_SCHEDULE"
 
       - name: Avisar quando o Cloudflare nao estiver configurado
         if: ${{ env.CF_TOKEN_CONFIGURED != 'true' || env.CF_ACCOUNT_CONFIGURED != 'true' }}
@@ -74,7 +94,7 @@ jobs:
         run: node scripts/save-deployment.mjs
       - uses: actions/upload-artifact@v4
         with:
-          name: vezori-rollback-${{ github.sha }}
+          name: vezori-rollback-${{ github.sha }}-${{ github.run_attempt }}
           path: out/rollback.json
           retention-days: 30
 
@@ -91,6 +111,26 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: node scripts/capture-authorized.mjs
+
+      - name: Registrar e reler execução Data Engine no KV existente
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node scripts/record-engine-run.mjs
+
+      - name: Aceite real do lote, fontes, indicadores e armazenamento
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        run: node scripts/verify-data-engine.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: data-engine-acceptance-${{ github.run_attempt }}
+          path: |
+            out/engine-run.json
+            out/data-engine-live-evidence.json
+            public/data/engine/manifest.json
+          retention-days: 30
 
       - name: Validar site e dados reais publicados
         if: ${{ env.CF_TOKEN_CONFIGURED == 'true' && env.CF_ACCOUNT_CONFIGURED == 'true' }}

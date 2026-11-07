@@ -4,6 +4,12 @@ Pesquisa de mercado, carteira local e simulações educacionais com fontes ident
 
 [Aplicação](https://vezori.bruno-giacomelli1979.workers.dev) · [Repositório](https://github.com/brunogiacomelli1979-cyber/vezori) · [Auditoria](docs/AUDIT_4.md)
 
+## Data Engine 1.0
+
+Ingestão oficial DFP/ITR histórica por CNPJ, macro BCB/PTAX, informes de fundos/FIIs e taxas/PUs do Tesouro, sem novo redesign. Integrações permite consultar cobertura, revisões, indicadores conciliados e baixar registros com origem/licença. Preços EOD públicos continuam bloqueados onde faltam direitos; CSV privado legítimo pode alimentar análise local sem upload nem alterar as cotações da carteira. SEC permanece adiada por escolha do proprietário.
+
+[Arquitetura, ciclos, métodos e testes](docs/DATA_ENGINE_1.md) · [Matriz de fontes e referências open source](docs/DATA_ENGINE_SOURCES_1.md). A disponibilidade efetiva e as datas estão em `/api/data-engine/status`; execução controlada não equivale a cron observado.
+
 ## Versão 4.0
 
 A publicação desta versão deve ser confirmada em `/api/health`: `version:4.0.0` e `release` igual ao SHA do deploy. Um workflow verde ou um namespace criado, isoladamente, não comprovam histórico de preços operacional. O relatório de aceite em `docs/ACCEPTANCE_4.md` registra o resultado verificado.
@@ -16,7 +22,7 @@ A publicação desta versão deve ser confirmada em `/api/health`: `version:4.0.
 |---|---|
 | Mercados e ficha | Catálogo local identificado e adaptadores brapi, CoinGecko e Twelve Data. Exibição B3/EUA condicionada a direitos documentados; ausência de fonte é explícita |
 | Comparador | Séries base 100 apenas em datas comuns; moedas e bases identificadas. Não é retorno convertido nem total return |
-| Fundamentos | Pipeline CVM DFP 2025 para cinco tickers; SEC anual para quatro emissores, sujeito à identificação da aplicação |
+| Fundamentos | CVM DFP/ITR histórica por CNPJ e versão; cinco tickers confirmados preservam fichas legadas. SEC preparada, dependente de identificação e ativação explícita |
 | Carteira | Compras, vendas, taxas, proventos, custo médio, realizado/não realizado, XIRR, exportação JSON/CSV, importação v2/v3 e cópia recuperável |
 | Laboratório | Cinco modelos didáticos; taxas hipotéticas editáveis, aportes, inflação, custos de gestão, imposto hipotético de liquidação e sensibilidade ±5 p.p. |
 | Risco | Retorno de preço, volatilidade, drawdown, correlação; VaR/CVaR empíricos na ficha quando há 100 retornos. Motor adicional de CAGR, Calmar, Sortino e comparação a benchmark com pré-requisitos explícitos |

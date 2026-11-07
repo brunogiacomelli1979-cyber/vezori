@@ -5,7 +5,7 @@ from pathlib import Path
 from unittest.mock import patch
 from urllib.error import HTTPError
 from zipfile import ZipFile
-from scripts.engine import cvm, funds, macro, treasury, sec
+from scripts.engine import cvm, funds, macro, treasury, sec, legacy
 from scripts.engine.core import Bundle, Fetcher, canonical, coverage, digest, iso, number, observation, merge_observations, previous_bundle
 
 FIX=Path(__file__).parent/'fixtures/data-engine'
@@ -59,7 +59,7 @@ class CoreTests(unittest.TestCase):
     def test_bundle_hashes_and_partitioned_recovery(self):
         with tempfile.TemporaryDirectory() as tmp:
             out=Path(tmp);b=Bundle();b.put('macro','rate',{'name':'Rate','frequency':'daily','license':'test'},[observation('a',{'date':'2025-01-01','value':1},{'value':'1'},SOURCE)])
-            b.publish(out,run_id='test',event='controlled',groups=['macro'],receipts=[SOURCE])
+            b.publish(out,run_id='test',event='controlled',groups=['macro'],receipts=[SOURCE],receipt_path=out/'run.json')
             entry=b.manifest['catalog']['macro'][0];self.assertEqual(digest((out/'objects'/(entry['sha256']+'.json')).read_bytes()),entry['sha256'])
             def fetch(request,**kwargs):
                 route=request.full_url.split('https://vezori.bruno-giacomelli1979.workers.dev/data/engine/')[1];return Reply((out/route).read_bytes())
@@ -99,6 +99,15 @@ class RealSourceTests(unittest.TestCase):
             path=Path(tmp)/'bad.zip'
             with ZipFile(path,'w') as z:z.writestr('dfp_cia_aberta_2025.csv','unexpected;header\n')
             with self.assertRaisesRegex(ValueError,'schema'):list(cvm.extract(path,SOURCE,'DFP',2025))
+    def test_legacy_dossiers_come_from_the_same_validated_batch(self):
+        source={**SOURCE,'url':'https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/dfp_cia_aberta_2025.zip','retrievedAt':'2026-11-07T00:00:00+00:00'}
+        b=Bundle();batch={}
+        for id,meta,row in cvm.extract(FIX/'cvm-dfp-real.zip',source,'DFP',2025):batch.setdefault(id,[]).append(row)
+        for id,rows in batch.items():b.put('cvm',id,{**self.registry[id],'license':SOURCE['license']},rows)
+        with tempfile.TemporaryDirectory() as tmp:
+            result=legacy.publish(b,Path(tmp));self.assertEqual(len(result),5)
+            self.assertEqual(result['PETR3']['accounts'],result['PETR4']['accounts']);self.assertEqual(result['PETR4']['filingVersion'],1)
+            self.assertTrue(result['PETR4']['dataEngineRecordUrl'].endswith('33000167000101'))
     def test_fund_class_schema_nav_and_real_dates(self):
         rows=list(funds.daily_rows(FIX/'funds-real.zip',SOURCE));self.assertTrue(rows)
         first=rows[0][1]['values'];self.assertEqual(first['date'],'2026-10-01');self.assertEqual(first['navPerUnitBRL'],44.9907626);self.assertEqual(first['navBRL'],1221524.87)

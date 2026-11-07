@@ -147,7 +147,7 @@ class Bundle:
         merged=merge_observations(prior.get('observations',[]),rows)
         if not merged:raise ValueError('Cannot publish empty instrument')
         self.documents[key]=compact_sources({'schemaVersion':1,'dataset':dataset,'id':id,**metadata,'sources':dict(prior.get('sources',{})),'observations':merged})
-    def publish(self,out, *, run_id,event,groups,receipts):
+    def publish(self,out, *, run_id,event,groups,receipts,receipt_path=Path('out/engine-run.json')):
         out=Path(out);objects=out/'objects';objects.mkdir(parents=True,exist_ok=True)
         catalog={};total=0;byte_count=0
         active_hashes=set()
@@ -185,7 +185,7 @@ class Bundle:
         for file in chunks_dir.glob('*.json.gz'):
             if re.fullmatch(r'[a-f0-9]{64}\.json\.gz',file.name) and file.name not in active_chunks:file.unlink()
         summary={'engineVersion':'1.0.0','run':self.manifest['run'],'generatedAt':self.manifest['generatedAt'],'manifestSha256':digest(manifest_blob),'datasets':self.manifest['datasets'],'storage':self.manifest['storage'],'sources':[{k:r.get(k) for k in ['url','sha256','bytes','retrievedAt','license']} for r in receipts],'blocked':self.manifest['blocked']}
-        Path('out').mkdir(exist_ok=True);Path('out/engine-run.json').write_bytes(canonical(summary))
+        receipt_path=Path(receipt_path);receipt_path.parent.mkdir(parents=True,exist_ok=True);receipt_path.write_bytes(canonical(summary))
         return summary
 
 def previous_bundle(root='https://vezori.bruno-giacomelli1979.workers.dev'):
