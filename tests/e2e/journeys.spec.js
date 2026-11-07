@@ -75,12 +75,26 @@ test('gráficos v5 e comparação normalizada carregam dados somente das fixture
   const q=new URL(route.request().url()).searchParams;
   await route.fulfill({contentType:'application/json',body:JSON.stringify({symbol:q.get('symbol'),market:q.get('market'),currency:'BRL',interval:'1d',provider:'test fixture',priceBasis:'test price only',coverage:{completeSinceListing:false},points:Array.from({length:121},(_,i)=>({date:new Date(Date.UTC(2024,0,i+1)).toISOString().slice(0,10),close:100+i*.1+Math.sin(i)}))})});
  });
- await page.goto('/');await page.locator('#global-search').fill('BTC');await page.locator('#global-search-form').press('Enter');
+ await page.goto('/');
+ await page.evaluate(()=>{
+  const lib=window.LightweightCharts;window.__chartFits=[];
+  window.LightweightCharts={...lib,createChart(host,options){
+   const chart=lib.createChart(host,options),scale=chart.timeScale(),fit=scale.fitContent.bind(scale);
+   scale.fitContent=()=>{fit();const evidence={width:host.getBoundingClientRect().width,range:null};window.__chartFits.push(evidence);requestAnimationFrame(()=>requestAnimationFrame(()=>{evidence.range=scale.getVisibleLogicalRange();}));};
+   return chart;
+  }};
+ });
+ await page.locator('#global-search').fill('BTC');await page.locator('#global-search-form').press('Enter');
  await expect(page.locator('#research-asset-lightweight')).toBeVisible();expect(await page.locator('#research-asset-lightweight canvas').count()).toBeGreaterThan(0);
+ await expect(page.locator('#research-asset-chart-fallback')).toBeHidden();
  await expect(page.locator('#research-risk-metrics')).toContainText('VaR');
  await page.locator('[data-view="compare"]').click();
  await page.locator('#research-compare-add').selectOption('PETR4');await page.locator('#research-compare-add').selectOption('VALE3');await page.locator('#research-compare-run').click();
  await expect(page.locator('#research-compare-lightweight')).toBeVisible();
+ await expect.poll(()=>page.evaluate(()=>window.__chartFits.length>=2&&window.__chartFits.every(x=>x.range&&x.range.to-x.range.from>100))).toBe(true);
+ const fits=await page.evaluate(()=>window.__chartFits);
+ expect(fits.length).toBeGreaterThanOrEqual(2);
+ for(const fit of fits){expect(fit.width).toBeGreaterThan(100);expect(fit.range.to-fit.range.from).toBeGreaterThan(100);}
 });
 test('falha de quota mantém operação anterior e não confirma o novo lançamento',async({page})=>{
  await page.addInitScript(backup=>{localStorage.setItem('vezori-portfolio-v3',backup);const original=Storage.prototype.setItem;Storage.prototype.setItem=function(key,value){if(key.startsWith('vezori-portfolio'))throw new DOMException('Quota exceeded','QuotaExceededError');return original.call(this,key,value);};},JSON.stringify({version:3,transactions:[buy]}));

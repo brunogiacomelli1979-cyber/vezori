@@ -97,3 +97,4 @@ body .sim-result strong{color:#edf3fa!important}
 body .provider-state.bad{color:#ff949d!important}
 body .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 body .home-search-field{position:relative;flex-direction:row;margin:0}
+body .research-chart [hidden]{display:none!important}

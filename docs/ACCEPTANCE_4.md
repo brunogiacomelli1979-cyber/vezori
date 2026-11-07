@@ -25,6 +25,8 @@ Capturas locais autênticas utilizam APIs reais e navegador novo, sem carteira p
 
 As capturas `images/mercados-producao.png` e `images/laboratorio-producao-mobile.png` vêm da versão publicada acima. A revisão seguinte corrige a disposição da busca identificada nessas imagens. Nos testes de produção, axe usa `preload:false` para não tentar buscar novamente a folha externa de fontes via fetch, que `connect-src` bloqueia; todas as regras WCAG selecionadas, incluindo contraste com estilos computados, continuam habilitadas. Esse ajuste é exclusivo do verificador, sem ampliar a CSP da aplicação.
 
+A consulta real de BTC confirmou 31 observações CoinGecko, 08/10 a 07/11/2026. A inspeção revelou também escala comprimida pela montagem do gráfico ainda oculto e fallback visual sobreposto. Esta revisão torna o contêiner visível antes de `fitContent` e respeita `[hidden]` no fallback; a regressão verifica largura e janela temporal após a renderização em quatro resoluções. Não há alteração nos preços ou cálculos para corrigir a apresentação.
+
 Repetição: instalar Chromium, definir `EXPECTED_SHA` para o commit publicado e executar `npm run test:production`. Os resultados e screenshots ficam em `out/production/`. Nenhuma API é interceptada; entradas manuais de teste ficam apenas no localStorage de contextos descartáveis, sem acessar o perfil pessoal.
 
 ## Condições de conclusão

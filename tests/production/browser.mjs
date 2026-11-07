@@ -23,6 +23,13 @@ try{
    assert.deepEqual(scan.violations.map(v=>({id:v.id,targets:v.nodes.map(n=>n.target)})),[],view+' '+width);
    await page.screenshot({path:out+'/'+view+'-'+width+'.png',fullPage:false});
   }
+  if(width===1920){
+   await page.locator('#global-search').fill('BTC');await page.locator('#global-search-form').press('Enter');
+   await page.waitForFunction(()=>/observações/.test(document.querySelector('#research-asset-history-status')?.textContent),{timeout:45000});
+   assert(await page.locator('#research-asset-lightweight').isVisible());
+   assert(!(await page.locator('#research-asset-chart-fallback').isVisible()));
+   await page.screenshot({path:out+'/btc-real.png',fullPage:true});
+  }
   // This manual test entry is confined to this disposable browser's localStorage.
   // It is not a quote, market dataset, financial order, or the owner's portfolio.
   await page.locator('#menu [data-view="dashboard"]').click();
