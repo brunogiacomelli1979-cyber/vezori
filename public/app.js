@@ -1,6 +1,6 @@
 import {createPortfolioStorage} from './portfolio-storage.js';
 import {localEodHistory,localEodInstruments} from './local-eod.js';
-import {mountDataEngine} from './data-engine-ui.js';
+import {mountDataEngine} from './data-engine-ui.js?v=42';
 import {ASSETS,KEY,STRATEGIES,validateTransaction,book,portfolio,portfolioXirr,project,parseBackup} from './finance.js';
 import {createApexDashboard} from './apex-ui.js';
 import {createResearchTools} from './research.js';

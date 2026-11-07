@@ -10,17 +10,22 @@ test.beforeEach(async({page})=>{
   if(path==='/api/storage-status')body={status:'not_configured'};
   if(path==='/api/data-engine/status')body={status:'available',engineVersion:'1.0.0',generatedAt:'test fixture',storage:{instruments:1,observations:1},coverage:{cvm:{instruments:1},fii:{instruments:0},funds:{instruments:0},treasury:{instruments:0},macro:{instruments:0}},blocked:{prices:{status:'rights_required'}}};
   if(path==='/api/data-engine/catalog')body={items:[{id:'00000000000000',name:'Issuer (test fixture)',first:'2025-12-31',last:'2025-12-31',observations:1}],hasNextPage:false};
-  if(path==='/api/data-engine/record')body={dataset:'cvm',id:'00000000000000',name:'Issuer (test fixture)',provider:'test fixture',currency:'BRL',license:'test fixture',observations:[{revisionOrdinal:1,values:{periodEnd:'2025-12-31',kind:'DFP',scope:'con',label:'Account (test fixture)',valueBRL:1}}],integrity:{verified:true}};
+  if(path==='/api/data-engine/record'){const requested=new URL(route.request().url()).searchParams.get('id');body={dataset:'cvm',id:requested,name:requested==='33000167000101'?'Petrobras (test fixture)':requested==='33592510000154'?'Vale (test fixture)':'Issuer (test fixture)',provider:'test fixture',currency:'BRL',license:'test fixture',observations:[{revisionOrdinal:1,values:{periodEnd:'2025-12-31',kind:'DFP',scope:'con',label:'Account (test fixture)',valueBRL:1}}],indicators:[{kind:'DFP',scope:'con',periodEnd:'2024-12-31',periodStart:'2024-01-01',filingVersion:1,status:'accounting_ratios',metrics:{netMarginPct:8}},{kind:'DFP',scope:'con',periodEnd:'2025-12-31',periodStart:'2025-01-01',filingVersion:2,status:'accounting_ratios',metrics:{netMarginPct:12,grossMarginPct:16,currentRatio:1.5,roePct:10,liabilitiesToAssetsPct:46}}],integrity:{verified:true}};}
   await route.fulfill({status:path==='/api/history'?422:200,contentType:'application/json',body:JSON.stringify(body)});
  });
 });
-test('início mostra acervo oficial real e leva diretamente à consulta',async({page})=>{
+test('início exibe margens e ROE calculados em vez do inventário bruto',async({page})=>{
  await page.goto('/');
- await expect(page.locator('#home-engine-status')).toContainText('1 instrumento');
- await expect(page.locator('#home-engine-coverage')).toContainText('Companhias CVM');
- await page.locator('#home-engine-open').click();
- await expect(page.locator('#view-about')).toHaveClass(/active/);
- await expect(page.locator('#engine-search')).toBeFocused();
+ await expect(page.locator('#home-insight-name')).toContainText('Petrobras (test fixture)');
+ await expect(page.locator('#home-engine-coverage')).toContainText('12,0%');
+ await expect(page.locator('#home-engine-coverage')).toContainText('1,5×');
+ await expect(page.locator('#home-insight-trend')).toContainText('2024-12-31');
+ await expect(page.locator('#home-engine-status')).not.toContainText('instrumentos identificados');
+ await page.locator('[data-insight-company="33592510000154"]').click();
+ await expect(page.locator('#home-insight-name')).toContainText('Vale (test fixture)');
+ await page.locator('#home-insight-search').fill('Vale');
+ await page.locator('#home-insight-form button').click();
+ await expect(page.locator('#home-insight-results')).toContainText('Issuer (test fixture)');
 });
 test('base oficial: catálogo, filtros, leitura e download auditável sem mudar a navegação',async({page})=>{
  await page.goto('/');await page.locator('#menu [data-view="about"]').click();await page.locator('#engine-query button').click();
