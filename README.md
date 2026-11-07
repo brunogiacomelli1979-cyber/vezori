@@ -17,7 +17,7 @@ Plataforma independente de pesquisa e simulação de investimentos, desenvolvida
 | Carteira | Uma aba para posições, movimentos, proventos, custo médio, ganhos realizados, XIRR e backup JSON; dados pessoais permanecem no navegador |
 | Laboratório | Cinco estratégias educativas, taxas **hipotéticas editáveis**, projeções com aportes e alerta para retornos absurdos; seção opcional de risco com séries históricas reais |
 | Risco observado | Retorno de preço, drawdown, volatilidade anualizada, correlação, cesta retrospectiva de 2 a 5 ativos da mesma moeda e calendário; não é retorno total, recomendação nem backtest de carteira real |
-| Histórico de dados | Cache diário regional ativado. Cron de captura persistente preparado; **o binding Workers KV ainda depende de permissão de namespace** |
+| Histórico de dados | Cache regional e código de captura diária. **O deploy novo exige binding Workers KV**, mas a ativação real permanece pendente de verificação no Cloudflare |
 | Deploy e testes | GitHub Actions publica no Cloudflare e executa testes JS/Python e smoke tests com mercado e arquivos CVM. A rotina de publicação também está agendada semanalmente para atualizar DFP |
 
 ## Dados financeiros: o que NÃO é inventado
@@ -57,6 +57,15 @@ O cron da VEZORI grava snapshots globais em KV e agora também mantém registros
 
 **Importante:** esse mecanismo é acumulativo, não realiza backfill anterior à primeira coleta e não resolve licenças de redistribuição. A habilitação de `MARKET_SNAPSHOTS` no Cloudflare é obrigatória para persistência. O armazenamento mensal usa uma escrita por ativo capturado, além das duas escritas do snapshot global; verificar quotas antes de ampliar a lista de ativos.
 
+## Confiabilidade da implantação — 07/11/2026
+
+- `scripts/provision_kv.mjs --required`: credenciais e vinculação KV são obrigatórias para novas publicações. A presença de um binding real existente é respeitada; permissões ausentes passam a impedir um deploy falsamente concluído.
+- GitHub Actions serializa as execuções de publicação para reduzir conflitos de criação de namespaces e deploys simultâneos.
+- O smoke pós-publicação exige `sourcesConfigured.marketSnapshotStorage=true`; estado `configured_empty` é aceitável antes da primeira execução cron, mas **não comprova histórico acumulado**.
+- Captura com gravação parcial (chave do dia salva, índice `latest` falhando) pode ser recuperada sem sobrescrever o preço original. Datas mais antigas não substituem um `latest` mais recente.
+- A rotina `scheduled` agora falha explicitamente quando o arquivo histórico não é persistido, em vez de apenas imprimir um status que poderia passar despercebido.
+- Consulte [ativação KV e critérios de validação](docs/SNAPSHOT_SETUP.md). **Não há confirmação de que essas alterações já estejam implantadas com sucesso no Cloudflare.**
+
 ## Configurações externas para cobertura completa
 
 As seguintes configurações **não** devem ser fornecidas em chats nem inseridas no repositório:
@@ -64,7 +73,7 @@ As seguintes configurações **não** devem ser fornecidas em chats nem inserida
 1. `BRAPI_API_KEY` — crie uma chave no plano gratuito em https://brapi.dev/ e configure como **Secret** no Cloudflare Worker `vezori`. O plano gratuito oferece até 15 mil requisições/mês e no máximo 3 meses de histórico, sujeito aos termos do provedor. Sem chave, PETR3 e outros ativos da B3 podem ter cotação de listagem, mas não histórico.
 2. `SEC_USER_AGENT` — configure uma identificação de aplicação e contato **verdadeiro** para acesso automatizado às demonstrações SEC. Sem esse segredo, o endpoint informa `not_configured` e não apresenta valores fictícios.
 3. **Ações e REITs americanos:** uma chave `TWELVEDATA_API_KEY` sozinha **não concede** autorização de exibição pública de cotações. A variável `US_PUBLIC_DISPLAY_AUTHORIZED=true` deve ser habilitada somente quando os direitos de exibição forem efetivamente contratados.
-4. **Workers KV:** namespace `vezori-MARKET_SNAPSHOTS`, binding `MARKET_SNAPSHOTS`. O CI tenta listar/criar o namespace utilizando o token já conectado, mas preserva o deploy se faltarem permissões. Para completar, conceda permissões suficientes de Workers KV no Cloudflare **ou** crie e vincule o namespace manualmente. Confirme `/api/health` → `sourcesConfigured.marketSnapshotStorage=true` antes de afirmar que os snapshots persistentes estão ativos.
+4. **Workers KV:** namespace `vezori-MARKET_SNAPSHOTS`, binding `MARKET_SNAPSHOTS`. O CI agora executa o provisionamento em modo obrigatório e **bloqueia o deploy se faltar o vínculo KV**. Para completar, conceda permissões suficientes de Workers KV no Cloudflare **ou** crie e vincule o namespace manualmente. Confirme `/api/health` → `sourcesConfigured.marketSnapshotStorage=true` e verifique `/api/storage-status` após a execução do cron antes de afirmar que as observações estão efetivamente sendo persistidas.
 
 O repositório nunca publica segredos, e nenhuma ação modifica Workers de outros projetos.
 
@@ -94,7 +103,7 @@ Para executar localmente, use `npm run dev`. `public/data/fundamentals` é gerad
                            ┌─────────────────┼──────────────────┐
                            |                 |                  |
                      APIs de mercado   Dados CVM estáticos   Cron EOD
-                           |                 |             KV opcional
+                           |                 |             KV exigido no deploy
                            └─────────────────┴──────────────────┘
                                              |
                            VEZORI frontend + Laboratório
