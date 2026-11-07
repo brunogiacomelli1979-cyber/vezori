@@ -3,6 +3,7 @@ import {verifyRecord} from './record-integrity.js';
 const headers={'content-type':'application/json; charset=utf-8','cache-control':'public, max-age=300','x-content-type-options':'nosniff','access-control-allow-origin':'*'};
 const reply=(body,status=200)=>new Response(JSON.stringify(body),{status,headers});
 const datasets=new Set(['cvm','macro','funds','fii','treasury','sec']);
+const fold=text=>String(text).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR');
 async function asset(env,request,path){
  if(!env.ASSETS?.fetch)throw Error('Data assets binding unavailable');
  const response=await env.ASSETS.fetch(new Request(new URL(path,request.url)));
@@ -43,10 +44,10 @@ export async function dataEngineRoute(request,env){
   const dataset=url.searchParams.get('dataset');
   if(!datasets.has(dataset))return reply({error:'Dataset inválido'},400);
   if(path==='/api/data-engine/catalog'){
-   let q=(url.searchParams.get('q')||'').trim().toLocaleLowerCase('pt-BR');const limit=Number(url.searchParams.get('limit')||25),offset=Number(url.searchParams.get('offset')||0);
+   let q=fold((url.searchParams.get('q')||'').trim());const limit=Number(url.searchParams.get('limit')||25),offset=Number(url.searchParams.get('offset')||0);
    if(/^[0-9.\-/\s]+$/.test(q))q=q.replace(/[.\-/\s]/g,'');
    if(q.length>80||!Number.isInteger(limit)||limit<1||limit>100||!Number.isInteger(offset)||offset<0||offset>20000)return reply({error:'Filtro/página inválidos'},400);
-   const rows=(manifest.catalog[dataset]||[]).filter(x=>!q||`${x.id} ${x.name} ${x.cvmCode||''} ${(x.symbols||[]).join(' ')}`.toLocaleLowerCase('pt-BR').includes(q));
+   const rows=(manifest.catalog[dataset]||[]).filter(x=>!q||fold(`${x.id} ${x.name} ${x.cvmCode||''} ${(x.symbols||[]).join(' ')}`).includes(q)||(/^\d{1,6}$/.test(q)&&x.cvmCode&&Number(q)===Number(x.cvmCode)));
    return reply({status:rows.length?'available':'no_coverage',dataset,items:rows.slice(offset,offset+limit),total:rows.length,offset,limit,hasNextPage:offset+limit<rows.length,sourceStatus:manifest.datasets[dataset]||manifest.blocked[dataset]||null});
   }
   if(path==='/api/data-engine/record'){

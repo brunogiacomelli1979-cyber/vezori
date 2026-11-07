@@ -83,6 +83,7 @@ class Fetcher:
                         self.receipts.append(previous);return oldpath,previous
                     if attempt==2 or exc.code not in {429,500,502,503,504}:raise RuntimeError('Source HTTP '+str(exc.code)+' at '+parsed.hostname) from None
                     delay=exc.headers.get('Retry-After','2')
+                    exc.close()
                     time.sleep(min(30,int(delay) if delay.isdigit() else 2))
                 except (URLError,TimeoutError) as exc:
                     if attempt==2:raise RuntimeError('Source transport failure ('+type(getattr(exc,'reason',exc)).__name__+') at '+parsed.hostname) from None
