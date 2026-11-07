@@ -16,26 +16,60 @@ const definitions={
 };
 export function mountDataEngine(){
  if(!$('engine-query'))return;
- const homeStatus=$('home-engine-status'),homeCoverage=$('home-engine-coverage');
- const count=n=>typeof n==='number'&&Number.isFinite(n)?new Intl.NumberFormat('pt-BR').format(n):'—';
- async function loadHomeCoverage(){
-  if(!homeStatus||!homeCoverage)return;
-  try{
-   const data=await get('/api/data-engine/status');
-   if(data.status!=='available'||!data.storage)throw Error('Acervo oficial ainda não disponível.');
-   homeStatus.textContent=count(data.storage.instruments)+' instrumentos identificados · '+count(data.storage.observations)+' registros publicados · lote '+(data.generatedAt||'sem data informada')+'.';
-   const sources=[['cvm','Companhias CVM'],['fii','FIIs'],['funds','Fundos (piloto)'],['treasury','Títulos do Tesouro'],['macro','Séries macro']];
-   homeCoverage.innerHTML=sources.map(([key,label])=>'<div class="home-engine-stat"><strong>'+count(data.coverage?.[key]?.instruments)+'</strong><span>'+esc(label)+'</span></div>').join('');
-  }catch(error){
-   homeStatus.textContent='Não foi possível confirmar a base oficial: '+error.message;
-   homeCoverage.replaceChildren();
+ const homeStatus=$('home-engine-status'),homeOutput=$('home-insight-output'),homeMetrics=$('home-engine-coverage');
+ const homeResults=$('home-insight-results');let insightRequest=0;
+ const financialLabels=[['netMarginPct','Margem líquida','%'],['grossMarginPct','Margem bruta','%'],['currentRatio','Liquidez corrente','×'],['roePct','ROE anual','%'],['liabilitiesToAssetsPct','Passivo exigível / ativo','%']];
+ const days=(a,b)=>Number.isFinite(Date.parse(a+'T00:00:00Z'))&&Number.isFinite(Date.parse(b+'T00:00:00Z'))?(Date.parse(b+'T00:00:00Z')-Date.parse(a+'T00:00:00Z'))/86400000:null;
+ function annualSummary(doc){
+  // Annual DFP only; no interpolation, no cross-filing quarter/YTD mixing.
+  const eligible=(doc.indicators||[]).filter(x=>x.kind==='DFP'&&['con','ind'].includes(x.scope)&&x.periodStart&&x.periodEnd&&days(x.periodStart,x.periodEnd)>=330&&days(x.periodStart,x.periodEnd)<=380&&Number.isInteger(x.filingVersion));
+  const scope=eligible.some(x=>x.scope==='con')?'con':'ind',byPeriod=new Map();
+  for(const row of eligible.filter(x=>x.scope===scope)){
+   const prior=byPeriod.get(row.periodEnd);if(!prior||row.filingVersion>prior.filingVersion)byPeriod.set(row.periodEnd,row);
   }
+  const years=[...byPeriod.values()].sort((a,b)=>a.periodEnd.localeCompare(b.periodEnd));
+  return {latest:years.at(-1)||null,years:years.slice(-5),scope};
  }
- void loadHomeCoverage();
- $('home-engine-open')?.addEventListener('click',()=>{
-  $('engine-query')?.scrollIntoView({block:'start'});
-  $('engine-search')?.focus({preventScroll:true});
+ function homeNumber(x,suffix){return Number.isFinite(x)?new Intl.NumberFormat('pt-BR',{maximumFractionDigits:2,minimumFractionDigits:1}).format(x)+suffix:'—';}
+ function presentInsight(doc){
+  const {latest,years,scope}=annualSummary(doc);const usable=latest?.status==='accounting_ratios';
+  $('home-insight-name').textContent=doc.name||'Companhia';
+  $('home-insight-period').textContent=latest?'DFP anual '+latest.periodEnd+' · '+(scope==='con'?'Consolidado':'Individual')+' · versão '+latest.filingVersion:'Sem DFP anual comparável neste recorte';
+  homeMetrics.innerHTML=financialLabels.map(([key,label,suffix])=>'<div class="insight-metric"><span>'+esc(label)+'</span><strong>'+esc(homeNumber(usable?latest.metrics?.[key]:null,suffix))+'</strong></div>').join('');
+  const trend=years.filter(x=>x.status==='accounting_ratios'&&Number.isFinite(x.metrics?.netMarginPct));
+  $('home-insight-trend').innerHTML=trend.length>=2?'<h4>Histórico da margem líquida anual</h4><div class="insight-timeline">'+trend.map(x=>'<div class="insight-year"><span>'+esc(x.periodEnd)+'</span><strong>'+esc(homeNumber(x.metrics.netMarginPct,'%'))+'</strong></div>').join('')+'</div>':'<p class="micro-note">A evolução da margem exige pelo menos dois exercícios anuais comparáveis.</p>';
+  $('home-insight-note').textContent=(latest?.status==='sector_specific_required'?'Instituição financeira: índices industriais não aplicáveis. ':latest?.status==='sector_unknown'?'Setor desconhecido: não atribuímos índices industriais. ':'Valores sem insumos suficientes permanecem indisponíveis. ')+
+   'Origem: '+(doc.provider||'CVM')+'. Margens e ROE contábeis, não valuation; dividendos e preços não foram inferidos.';
+  homeOutput.hidden=false;
+ }
+ async function openCompany(id){
+  const token=++insightRequest;homeStatus.textContent='Calculando a partir das demonstrações CVM…';homeResults.hidden=true;
+  try{
+   const doc=await get('/api/data-engine/record?dataset=cvm&id='+encodeURIComponent(id));
+   if(token!==insightRequest)return;
+   if(!doc.integrity?.verified||doc.dataset!=='cvm'||doc.id!==id||!Array.isArray(doc.indicators))throw Error('Demonstrativo sem integridade ou indicadores validados.');
+   presentInsight(doc);homeStatus.textContent='Indicadores com fonte e competência verificadas.';
+  }catch(error){if(token!==insightRequest)return;homeOutput.hidden=true;homeStatus.textContent='Indicadores indisponíveis: '+error.message;}
+ }
+ $('home-insight-form')?.addEventListener('submit',async event=>{
+  event.preventDefault();
+  const term=$('home-insight-search').value.trim();if(term.length<2){homeStatus.textContent='Informe pelo menos dois caracteres.';return;}
+  const token=++insightRequest;homeResults.hidden=true;homeStatus.textContent='Pesquisando companhias…';
+  try{
+   const result=await get('/api/data-engine/catalog?dataset=cvm&q='+encodeURIComponent(term)+'&limit=8');
+   if(token!==insightRequest)return;
+   homeResults.replaceChildren();
+   for(const item of result.items||[]){
+    const button=document.createElement('button');button.type='button';button.className='button';button.textContent=item.name+' · '+(item.symbols||[]).join('/');button.dataset.insightId=item.id;
+    homeResults.append(button);
+   }
+   homeResults.hidden=!homeResults.childElementCount;
+   homeStatus.textContent=result.items?.length?'Selecione uma empresa para consultar os indicadores.':'Nenhuma companhia encontrada no recorte disponível.';
+  }catch(error){if(token!==insightRequest)return;homeStatus.textContent='Pesquisa indisponível: '+error.message;}
  });
+ homeResults?.addEventListener('click',event=>{const b=event.target.closest('[data-insight-id]');if(b)void openCompany(b.dataset.insightId);});
+ document.querySelectorAll('[data-insight-company]').forEach(b=>b.addEventListener('click',()=>void openCompany(b.dataset.insightCompany)));
+ void openCompany('33000167000101');
  let offset=0,current=null,catalogDataset='cvm',querySerial=0,detailSerial=0;
  function renderDocument(){
   if(!current)return;const fields=definitions[current.dataset]||[],year=$('engine-year').value,scope=$('engine-scope').value;
