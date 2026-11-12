@@ -1,21 +1,14 @@
 name: VEZORI — Verificar ingestão oficial Data Engine
+# PAUSA TEMPORARIA — 2026-11-12: bloqueado ate aprovacao das regras financeiras.
+# Para reativar, restaurar os gatilhos e as condicoes dos jobs do commit anterior.
 on:
-  push:
-    branches: [feat/vezori-data-engine-1]
-  pull_request:
-    branches: [main]
-    paths:
-      - 'scripts/engine/**'
-      - 'scripts/data_engine.py'
-      - 'scripts/cvm_extract.py'
-      - 'tests/test_data_engine.py'
-      - 'tests/fixtures/data-engine/**'
-      - '.github/workflows/data-engine-audit.yml'
   workflow_dispatch:
+
 permissions:
   contents: read
 jobs:
   official-sources:
+    if: ${{ false }} # pausa temporaria; nao executar, nem manualmente
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:

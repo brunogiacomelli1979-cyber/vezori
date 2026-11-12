@@ -1,13 +1,14 @@
 name: VEZORI — Validar código, matemática e interface
+# PAUSA TEMPORARIA — 2026-11-12: bloqueado ate aprovacao das regras financeiras.
+# Para reativar, restaurar os gatilhos e as condicoes dos jobs do commit anterior.
 on:
-  push:
-    branches: [main, feat/vezori-4-audit-reliability, feat/vezori-data-engine-1]
-  pull_request:
-    branches: [main]
+  workflow_dispatch:
+
 permissions:
   contents: read
 jobs:
   validate:
+    if: ${{ false }} # pausa temporaria; nao executar, nem manualmente
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

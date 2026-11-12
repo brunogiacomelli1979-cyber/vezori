@@ -1,8 +1,9 @@
 name: VEZORI — Verificar infraestrutura isoladamente
+# PAUSA TEMPORARIA — 2026-11-12: bloqueado ate aprovacao das regras financeiras.
+# Para reativar, restaurar os gatilhos e as condicoes dos jobs do commit anterior.
 on:
-  push:
-    branches: [feat/vezori-4-audit-reliability]
   workflow_dispatch:
+
 permissions:
   contents: read
 concurrency:
@@ -10,6 +11,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   verify-kv:
+    if: ${{ false }} # pausa temporaria; nao executar, nem manualmente
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

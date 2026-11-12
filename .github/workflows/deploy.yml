@@ -1,21 +1,9 @@
 name: VEZORI - Testar e publicar no Cloudflare
 
+# PAUSA TEMPORARIA — 2026-11-12: bloqueado ate aprovacao das regras financeiras.
+# Para reativar, restaurar os gatilhos e as condicoes dos jobs do commit anterior.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
-    inputs:
-      data_groups:
-        description: Ciclo de dados; bootstrap inicial inclui todas as bases oficiais
-        type: choice
-        default: all
-        options: [all, cvm, macro, funds, fii, treasury, sec]
-  schedule:
-    - cron: '37 12 * * 3'  # Quarta-feira UTC: CVM atualiza arquivos semanalmente
-    - cron: '15 22 * * 1-6'  # Macro e Tesouro, 19:15 Brasília
-    - cron: '15 12 * * 1-6'  # Fundos/FIIs após disponibilização dos informes
-    - cron: '15 1 * * 2-6'   # SEC, quando houver identidade válida
-    - cron: '30 23 * * 1-5'  # 20:30 Brasília: só registrar bloqueio enquanto faltam direitos EOD
 
 permissions:
   contents: read
@@ -27,12 +15,14 @@ concurrency:
 
 jobs:
   price-rights-gate:
-    if: ${{ github.event.schedule == '30 23 * * 1-5' }}
+    if: ${{ false }} # pausa temporaria; nao executar, nem manualmente
+    # Condicao original: ${{ github.event.schedule == '30 23 * * 1-5' }}
     runs-on: ubuntu-latest
     steps:
       - run: echo "::notice::EOD bloqueado por direitos de exibição/retencao nao comprovados. Nenhum fornecedor foi consultado, preco criado ou flag habilitada."
   test-and-deploy:
-    if: ${{ github.event.schedule != '30 23 * * 1-5' }}
+    if: ${{ false }} # pausa temporaria; nao executar, nem manualmente
+    # Condicao original: ${{ github.event.schedule != '30 23 * * 1-5' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:

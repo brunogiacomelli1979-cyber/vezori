@@ -1,36 +1,14 @@
 name: CVM — Extrair demonstrativos oficiais (manual)
+# PAUSA TEMPORARIA — 2026-11-12: bloqueado ate aprovacao das regras financeiras.
+# Para reativar, restaurar os gatilhos e as condicoes dos jobs do commit anterior.
 on:
   workflow_dispatch:
-    inputs:
-      ticker:
-        description: Ticker após confirmação da relação ticker ↔ CNPJ
-        required: true
-        type: string
-      cnpj:
-        description: CNPJ oficial da companhia
-        required: true
-        type: string
-      year:
-        description: Ano do demonstrativo, ex. 2025
-        required: true
-        type: string
-        default: '2025'
-      kind:
-        description: Tipo de arquivo
-        required: true
-        type: choice
-        options: [DFP, ITR]
-        default: DFP
-      scope:
-        description: Escopo das contas
-        required: true
-        type: choice
-        options: [con, ind]
-        default: con
+
 permissions:
   contents: read
 jobs:
   cvm-extract:
+    if: ${{ false }} # pausa temporaria; nao executar, nem manualmente
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
